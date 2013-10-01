@@ -21,6 +21,3 @@
   (testing "interprets divides"
            (is (= 1 (interpreter.core/interpret
                        `(:plus (:number 2) (:number 2)))))))
-
-(deftest i-fail
-  (testing "foobar" (is (= 0 1))))

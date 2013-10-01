@@ -1,8 +1,5 @@
 (ns interpreter.core)
 
-(defn ^:export foobar [x]
-  (println "hello world"))
-
 (def operators {:plus +
                 :minus -
                 :multiply *
@@ -18,3 +15,15 @@
             ((operators operator)
                (interpret l)
                (interpret r)))))
+
+(defn ^:export concrete->token [chunk]
+  (if (number? chunk)
+    chunk
+    (chunk {"+" :plus
+            "-" :minus
+            "*" :multiply
+            "/" :divide})))
+
+(defn ^:export lexer [concrete]
+  "concrete string -> list of tokens"
+  (clojure.string/split concrete))
