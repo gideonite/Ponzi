@@ -5,4 +5,22 @@
 
 (deftest interpret-test
   (testing "interprets numbers"
-           (is (= 5 (interpreter.core/interpret 5)))))
+           (is (= 5 (interpreter.core/interpret `(:number 5)))))
+  (testing "interprets plus"
+           (is (= 0 (interpreter.core/interpret
+                       `(:plus (:number 2) (:number -2))))))
+  (testing "interprets minus"
+           (is (= 0 (interpreter.core/interpret
+                       `(:plus (:number 2) (:number 2))))))
+  (testing "interprets times"
+           (is (= 4 (interpreter.core/interpret
+                       `(:plus (:number 2) (:number 2))))))
+  (testing "interprets times zero"
+           (is (= 0 (interpreter.core/interpret
+                       `(:plus (:number 0) (:number 2))))))
+  (testing "interprets divides"
+           (is (= 1 (interpreter.core/interpret
+                       `(:plus (:number 2) (:number 2)))))))
+
+(deftest i-fail
+  (testing "foobar" (is (= 0 1))))
