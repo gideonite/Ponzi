@@ -2,13 +2,17 @@
 
 (def clojure-apply apply)
 
-(def primitive-procedures
-  {:plus  +
-   :minus -
-   :multiply *
-   :divide /})
+;; a frame is a Clojure map of variables to values
+;;
+;; an environment is a list of frames
 
-;; interpret : eval and apply
+(defn make-frame
+  [variables values]
+  (zipmap variables values))
+
+(defn extend-environment
+  [env frame]
+  (cons frame env))
 
 (defn self-evaluating?
   [exp]
@@ -19,14 +23,22 @@
   [exp]
   (symbol? exp))
 
+symbol
+
+(defn enclosing-environment
+  [env]
+  (rest env))
+
 (defn lookup-variable-value
-  [exp env]
-  ;; TODO
-  )
+  [variable env]
+  (variable (first (filter variable env))))
+
+(def primitive-procedures)
 
 (defn primitive-procedure?
   [procedure]
-  (contains? primitive-procedures procedure))
+  (contains? (into #{} (vals primitive-procedures))
+             procedure))
 
 (defn apply-primitive-procedure
   [procedure arguments]
@@ -36,10 +48,14 @@
   [procedure]
  false)
 
+(defn arguments
+  [exp]
+  (rest exp))
+
 (defn scheme-apply
   [procedure arguments]
-  (cond (primitive-procedure? procedure) (apply-primitive-procedure procedure arguments)
-        (compound-procedure? procedure) "foobar"))
+  (cond (primitive-procedure? procedure)
+        (apply-primitive-procedure procedure arguments)))
 
 (defn operator
   [exp]
@@ -50,25 +66,28 @@
   (rest exp))
 
 (declare scheme-eval)
-(defn list-of-values
-  [operands env]
-  (map #(scheme-eval % env) operands))
 
-(defn application? [exp] exp)
+(defn eval-coll
+  [coll env]
+  (map #(scheme-eval % env) coll))
 
+(defn application? [exp] (seq? exp))
 (defn scheme-eval
   [exp env]
   (cond (self-evaluating? exp) exp
         (variable? exp)     (lookup-variable-value exp env)
         (application? exp)  (scheme-apply (scheme-eval (operator exp) env)
-                                          (list-of-values (operands exp) env))))
+                                          (eval-coll (operands exp) env))))
 
-(scheme-eval 1 nil)
+(def primitive-procedures
+  { (symbol '+) +
+    (symbol '-) -
+    (symbol '*) *
+    (symbol '/) / })
 
-(scheme-eval `(+ 1 1) nil)
+(def the-empty-environmet '())
 
-;; The difference between a symbol and a variable:
-;;    * symbol:     datatype, could be used for anything
-;;    * variable:   interpreter concept/data type, the interpreter delegates
-;;                  based on the type of data it is getting (whether it is a
-;;                  variable, a number, a lambda, etc.)
+(defn setup-environment []
+  (extend-environment the-empty-environmet primitive-procedures))
+
+(def ^:dynamic *the-global-env* (setup-environment))
