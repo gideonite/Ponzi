@@ -77,10 +77,19 @@
   [exp]
   (rest exp))
 
+(defn replace-first
+  "Replaces the first element of the coll that returns true on the pred
+  function with replacement."
+  [pred coll replacement]
+  (loop [lhs '()
+         rhs coll]
+    (if (pred (first rhs))
+      (flatten (list lhs replacement (rest rhs)))
+      (recur (cons (first rhs) lhs) (rest rhs)))))
+
 (defn set-variable-value!
   [variable value env]
-  (let [ [index frame] (lookup-variable-value variable env)]
-    (assoc env index (assoc frame variable value))))
+  (replace-first variable env value))
 
 (defn assignment?
   [exp]
