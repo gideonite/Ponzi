@@ -29,8 +29,8 @@
 
 (deftest set-variable-value!-test
   (testing ""
-           (is (= '({:a 2} {:b 2 :c 3})
-                  (set-variable-value! :a 2 '({:a 1} {:b 2 :c 3}))))))
+           (is (= [ {:a 2} {:b 2 :c 3}]
+                  (set-variable-value! :a 2 [{:a 1} {:b 2 :c 3}])))))
 
 (deftest text-of-quotation-test
   (is (= '(1 2 3)

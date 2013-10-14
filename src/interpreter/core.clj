@@ -118,8 +118,7 @@
         (quoted? exp) (text-of-quotation exp)
         (assignment? exp) (eval-assignment exp env)
         (application? exp)  (scheme-apply (scheme-eval (operator exp) env)
-                                          (eval-coll (operands exp) env))
-        ))
+                                          (eval-coll (operands exp) env))))
 
 (def primitive-procedures
   { (symbol '+) +
