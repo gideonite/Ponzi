@@ -27,16 +27,11 @@
   [env]
   (rest env))
 
-(defn first-frame-with-var
-  [variable env]
-  )
-
 (defn lookup-variable-value
-  "returns the [index frame] of the first frame containing a variable"
+  "Finds the value of the variable in the first frame that contains it.
+  Returns nil if no frames contain it."
   [variable env]
-  (->> (map-indexed vector env)
-    (filter #(variable (second %)))
-    (first)))
+  (variable (first (filter variable env))))
 
 (def primitive-procedures)
 
@@ -114,7 +109,7 @@
 (defn scheme-eval
   [exp env]
   (cond (self-evaluating? exp) exp
-        (variable? exp) (second (lookup-variable-value exp env))
+        (variable? exp) (lookup-variable-value exp env)
         (quoted? exp) (text-of-quotation exp)
         (assignment? exp) (eval-assignment exp env)
         (application? exp)  (scheme-apply (scheme-eval (operator exp) env)
@@ -126,7 +121,7 @@
     (symbol '*) *
     (symbol '/) / })
 
-(def the-empty-environmet [])
+(def the-empty-environmet '())
 
 (defn setup-environment []
   (extend-environment the-empty-environmet primitive-procedures))
