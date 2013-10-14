@@ -24,13 +24,8 @@
 
 (deftest quoted?-test
   (testing ""
-           (is (= true (quoted? '(:quote (1 2 3)))))
+           (is (= true (quoted? '(quote (1 2 3)))))
            (is (= false (quoted? '(1 2 3 4))))))
-
-;(deftest set-variable-value!-test
-;  (testing ""
-;           (is (= [ {:a 2} {:b 2 :c 3}]
-;                  (set-variable-value! :a 2 [{:a 1} {:b 2 :c 3}])))))
 
 (deftest lookup-variable-value-test
   (testing "environment of size 1"
@@ -40,9 +35,10 @@
   (testing "the empty environment"
            (is (= nil (lookup-variable-value :a '())))))
 
-(deftest replace-first-test
-  (testing "replace middle element"
-           (is (= '(:T :foobar :T) (replace-first #(= % :N) '(:T :N :T) :foobar)))))
+(deftest set-variable-value-test
+  (testing ""
+           (is (= '( {:a 2} {:b 2 :c 3})
+                  (set-variable-value :a 2 '({:a 1} {:b 2 :c 3}))))))
 
 (deftest text-of-quotation-test
   (is (= '(1 2 3)

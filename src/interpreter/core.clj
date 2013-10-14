@@ -71,41 +71,41 @@
 
 (defn quoted?
   [exp]
-  (tagged-list? exp :quote))
+  (tagged-list? exp 'quote))
 
 (defn text-of-quotation
   [exp]
   (rest exp))
 
-(defn replace-first
-  "Replaces the first element of the coll that returns true on the pred
-  function with replacement."
-  [pred coll replacement]
-  (loop [lhs '()
-         rhs coll]
-    (if (pred (first rhs))
-      (flatten (list lhs replacement (rest rhs)))
-      (recur (cons (first rhs) lhs) (rest rhs)))))
-
-(defn set-variable-value!
+(defn set-variable-value
+  "Replaces the first frame containing the variable with a new frame in which
+  the variable's current value is replaced with the value provided.  Returns a
+  lazy-seq."
   [variable value env]
-  (replace-first variable env value))
+  (lazy-seq
+    (if-let [[frame & frames] env]
+      (if (variable frame)
+        (cons (assoc frame variable value) frames)
+        (cons frame (set-variable-value variable value env)))
+      (throw (Exception. "Unbound variable: SET! " variable)))))
 
 (defn assignment?
   [exp]
-  (tagged-list? exp :set!))
+  (tagged-list? exp 'set!))
 
 (defn assignment-variable
-  [exp])
+  [exp]
+  (second exp))
 
 (defn assignment-value
-  [exp])
+  [exp]
+  (nth exp 2))
 
 (declare scheme-eval)
 
 (defn eval-assignment
   [exp env]
-  (set-variable-value! (assignment-variable exp)
+  (set-variable-value (assignment-variable exp)
                        (scheme-eval (assignment-value exp))
                        env))
 
