@@ -86,8 +86,13 @@
     (if-let [[frame & frames] env]
       (if (variable frame)
         (cons (assoc frame variable value) frames)
-        (cons frame (set-variable-value variable value env)))
-      (throw (Exception. "Unbound variable: SET! " variable)))))
+        (cons frame (set-variable-value variable value frames)))
+      (throw (Exception. (str "Unbound variable: SET! " variable))))))
+
+;; TODO: custom Exception?
+
+(comment
+  (set-variable-value :a 12 '({:a 40} {:b 12})))
 
 (defn assignment?
   [exp]
