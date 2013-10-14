@@ -23,15 +23,20 @@
   [exp]
   (symbol? exp))
 
-symbol
-
 (defn enclosing-environment
   [env]
   (rest env))
 
-(defn lookup-variable-value
+(defn first-frame-with-var
   [variable env]
-  (variable (first (filter variable env))))
+  )
+
+(defn lookup-variable-value
+  "returns the [index frame] of the first frame containing a variable"
+  [variable env]
+  (->> (map-indexed vector env)
+    (filter #(variable (second %)))
+    (first)))
 
 (def primitive-procedures)
 
@@ -65,19 +70,56 @@ symbol
   [exp]
   (rest exp))
 
+(defn tagged-list?
+  [exp tag]
+  (= tag (first exp)))
+
+(defn quoted?
+  [exp]
+  (tagged-list? exp :quote))
+
+(defn text-of-quotation
+  [exp]
+  (rest exp))
+
+(defn set-variable-value!
+  [variable value env]
+  (let [ [index frame] (lookup-variable-value variable env)]
+    (assoc env index (assoc frame variable value))))
+
+(defn assignment?
+  [exp]
+  (tagged-list? exp :set!))
+
+(defn assignment-variable
+  [exp])
+
+(defn assignment-value
+  [exp])
+
 (declare scheme-eval)
+
+(defn eval-assignment
+  [exp env]
+  (set-variable-value! (assignment-variable exp)
+                       (scheme-eval (assignment-value exp))
+                       env))
 
 (defn eval-coll
   [coll env]
   (map #(scheme-eval % env) coll))
 
 (defn application? [exp] (seq? exp))
+
 (defn scheme-eval
   [exp env]
   (cond (self-evaluating? exp) exp
-        (variable? exp)     (lookup-variable-value exp env)
+        (variable? exp) (second (lookup-variable-value exp env))
+        (quoted? exp) (text-of-quotation exp)
+        (assignment? exp) (eval-assignment exp env)
         (application? exp)  (scheme-apply (scheme-eval (operator exp) env)
-                                          (eval-coll (operands exp) env))))
+                                          (eval-coll (operands exp) env))
+        ))
 
 (def primitive-procedures
   { (symbol '+) +
@@ -85,7 +127,7 @@ symbol
     (symbol '*) *
     (symbol '/) / })
 
-(def the-empty-environmet '())
+(def the-empty-environmet [])
 
 (defn setup-environment []
   (extend-environment the-empty-environmet primitive-procedures))

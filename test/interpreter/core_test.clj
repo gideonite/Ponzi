@@ -17,7 +17,24 @@
 
 (deftest primitive-procedure?-test
   (testing ""
-           (is (primitive-procedure? '+))))
+           (is (primitive-procedure? +))))
+
+(deftest tagged-list?-test
+  (is (= true (tagged-list? '(:quote '(1 2 3)) :quote))))
+
+(deftest quoted?-test
+  (testing ""
+           (is (= true (quoted? '(:quote (1 2 3)))))
+           (is (= false (quoted? '(1 2 3 4))))))
+
+(deftest set-variable-value!-test
+  (testing ""
+           (is (= '({:a 2} {:b 2 :c 3})
+                  (set-variable-value! :a 2 '({:a 1} {:b 2 :c 3}))))))
+
+(deftest text-of-quotation-test
+  (is (= '(1 2 3)
+         (text-of-quotation '(:quote 1 2 3)))))
 
 (deftest eval-test
   (testing "evaluates numbers"
