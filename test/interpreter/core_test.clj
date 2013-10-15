@@ -35,14 +35,26 @@
   (testing "the empty environment"
            (is (= nil (lookup-variable-value :a '())))))
 
-(deftest set-variable-value-test
-  (testing ""
-           (is (= '( {:a 2} {:b 2 :c 3})
-                  (set-variable-value :a 2 '({:a 1} {:b 2 :c 3}))))))
+;(deftest set-variable-value-test
+;  (testing "variable exists"
+;           (is (= '( {:a 2} {:b 2 :c 3})
+;                  (set-variable-value :a 2 '({:a 1} {:b 2 :c 3})))))
+;  (testing "variable does not exist"
+;           (is (= nil (set-variable-value :x 2 '({:a 1} {:b 2 :c 3}))))))
 
 (deftest text-of-quotation-test
   (is (= '(1 2 3)
          (text-of-quotation '(:quote 1 2 3)))))
+
+(deftest eval-begin
+  (is (= 2 (scheme-eval '(begin 1 (+ 1 1)) (setup-environment)))))
+
+(deftest eval-lambda
+  (is (= {:procedure true
+          :parameters '(x y)
+          :body '(+ 40 2)
+          :env (setup-environment) }
+         (scheme-eval '(lambda (x, y) (+ 40 2)) (setup-environment)))))
 
 (deftest eval-test
   (testing "evaluates numbers"
