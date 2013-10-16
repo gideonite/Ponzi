@@ -2,11 +2,13 @@
 
 (def clojure-apply apply)
 
-;; interact with environment
+;;
+;; ENVIRONMENT
+;;
 
 (defn make-frame
   [variables values]
-  (zipmap values variables))
+  (zipmap variables values))
 
 (defn extend-environment
   [env frame]
@@ -31,62 +33,6 @@
   [variable env]
   (variable (first (filter variable env))))
 
-;; environment setup
-
-(def primitive-procedures
-  { (symbol '+) +
-    (symbol '-) -
-    (symbol '*) *
-    (symbol '/) / })
-
-(def the-empty-environmet '())
-
-(defn setup-environment []
-  (extend-environment the-empty-environmet primitive-procedures))
-
-(def ^:dynamic *the-global-env* (setup-environment))
-
-(defn primitive-procedure?
-  [procedure]
-  (contains? (into #{} (vals primitive-procedures))
-             procedure))
-
-(defn apply-primitive-procedure
-  [procedure arguments]
-  (clojure-apply procedure arguments))
-
-(defn compound-procedure?
-  [procedure]
- false)
-
-(defn arguments
-  [exp]
-  (rest exp))
-
-(defn scheme-apply
-  [procedure arguments]
-  (cond (primitive-procedure? procedure) (apply-primitive-procedure procedure arguments)))
-
-(defn operator
-  [exp]
-  (first exp))
-
-(defn operands
-  [exp]
-  (rest exp))
-
-(defn tagged-list?
-  [exp tag]
-  (= tag (first exp)))
-
-(defn quoted?
-  [exp]
-  (tagged-list? exp 'quote))
-
-(defn text-of-quotation
-  [exp]
-  (rest exp))
-
 (defn set-variable-value
   "Replaces the first frame containing the variable with a new frame in which
   the variable's current value is replaced with the value provided.  Returns a
@@ -104,9 +50,57 @@
 (comment
   (set-variable-value :a 12 '({:a 40} {:b 12})))
 
-(defn assignment?
+;;
+;; PROCEDURE
+;;
+
+(def primitive-procedures
+  { (symbol '+) +
+    (symbol '-) -
+    (symbol '*) *
+    (symbol '/) / })
+
+(defn primitive-procedure?
+  [procedure]
+  (contains? (into #{} (vals primitive-procedures))
+             procedure))
+
+(defn apply-primitive-procedure
+  [procedure arguments]
+  (clojure-apply procedure arguments))
+
+(defn arguments
   [exp]
-  (tagged-list? exp 'set!))
+  (rest exp))
+
+(defn compound-procedure?
+  [procedure]
+  (:procedure procedure))
+
+(defn make-procedure
+  "returns the datum representing procedure.
+  Has a field :procedure which is set to true"
+  [parameters body env]
+  ;; N.B. lambdas evaluate to procedures and that's it!  (Crack open a REPL and
+  ;; evaluate `(lambda(x,y) (+ x y))`, it evaluates to some sort of procedure
+  ;; object.  When an enclosing S-expression drops through to the `list?` case
+  ;; then `apply` kicks in, asks whether it is a procedure call and does the
+  ;; appropriate thing).
+  {:procedure true
+   :parameters parameters
+   :body body
+   :env env})
+
+(declare eval-sequence)
+
+(defn scheme-apply
+  [procedure arguments]
+  (cond (primitive-procedure? procedure) (apply-primitive-procedure procedure arguments)
+        (compound-procedure? procedure) (eval-sequence
+                                          (:body procedure)
+                                          (extend-environment (:env procedure)
+                                                              (make-frame (:parameters procedure)
+                                                                          arguments)))))
 
 (defn assignment-variable
   [exp]
@@ -156,6 +150,14 @@
   [coll env]
   (map #(scheme-eval % env) coll))
 
+(defn tagged-list?
+  [exp tag]
+  (= tag (first exp)))
+
+(defn assignment?
+  [exp]
+  (tagged-list? exp 'set!))
+
 (defn begin?
   [exp]
   (tagged-list? exp 'begin))
@@ -182,21 +184,23 @@
 
 (defn body
  [exp]
-  (nth exp 2))
+  (rest (rest exp)))
 
-(defn make-procedure
-  "returns the datum representing procedure.
-  Has a field :procedure which is set to true"
-  [parameters body env]
-  ;; N.B. lambdas evaluate to procedures and that's it!  (Crack open a REPL and
-  ;; evaluate `(lambda(x,y) (+ x y))`, it evaluates to some sort of procedure
-  ;; object.  When an enclosing S-expression drops through to the `list?` case
-  ;; then `apply` kicks in, asks whether it is a procedure call and does the
-  ;; appropriate thing).
-  {:procedure true
-   :parameters parameters
-   :body body
-   :env env})
+(defn operator
+  [exp]
+  (first exp))
+
+(defn operands
+  [exp]
+  (rest exp))
+
+(defn quoted?
+  [exp]
+  (tagged-list? exp 'quote))
+
+(defn text-of-quotation
+  [exp]
+  (rest exp))
 
 (defn scheme-eval
   [exp env]
@@ -207,6 +211,52 @@
         (lambda? exp) (make-procedure (parameters exp) (body exp) env)
         ;(definition? exp) (eval-definition exp env)
         ;(assignment? exp) (eval-assignment exp env)
-        (list? exp) (scheme-apply (scheme-eval (operator exp) env) (eval-all (operands exp) env))))
+        (list? exp) (scheme-apply
+                      (scheme-eval (operator exp) env)
+                      (eval-all (operands exp) env))))
 
-(scheme-eval '(+ 1 1) *the-global-env*)
+(eval-sequence '( (+ 1 2)) (setup-environment))
+
+(comment
+  (scheme-eval '((lambda (x,y) (+ x y)) 1 2) (setup-environment))
+
+  ;(list? exp) => true
+  (scheme-apply (scheme-eval (operator '((lambda (x,y) (+ x y)) 1 2)) (setup-environment))
+                (eval-all (operands '((lambda (x,y) (+ x y)) 1 2)) (setup-environment)))
+
+  ;(lambda? '(lambda (x,y) (+ x y))) => true
+  (scheme-eval '(lambda (x,y) (+ x y)) (setup-environment))
+  ;=> {:procedure true :arguments '(x,y) :body '(+ x y) :env { ...primitive-procedures }}
+
+  ;(self-evaluating? 1) => true
+  (eval-all '(1 2) (setup-environment))
+  ;=> (1 2)
+
+  (scheme-apply {:procedure true :parameters '(x,y) :body '((+ x y)) :env (setup-environment)} '(1 2))
+
+  ; (compound-procedure? {:procedure true ...}) => true
+  (eval-sequence
+    '((+ x y)) ; <= (:body procedure)
+    (extend-environment (setup-environment)   ; <= {...primitive procedures}
+                        (make-frame '(x y)    ; <= (:parameters procedure)
+                                    '(1 2)    ; <= arguments
+                                    )))
+
+  (eval-sequence
+    '((+ x y))
+    (cons {'x 1 'y 2} (setup-environment) ; { ...primitive procedures }
+          ))
+)
+
+;;
+;; ENVIRONMENT SETUP
+;;
+
+(def the-empty-environmet '())
+
+(defn setup-environment []
+  (extend-environment the-empty-environmet primitive-procedures))
+
+(def ^:dynamic *the-global-env* (setup-environment))
+
+(def exp '((lambda (x,y) (+ x y)) 1 2))
