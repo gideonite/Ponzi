@@ -6,7 +6,7 @@
 
 (defn make-frame
   [variables values]
-  (zipmap variables values))
+  (zipmap values variables))
 
 (defn extend-environment
   [env frame]
