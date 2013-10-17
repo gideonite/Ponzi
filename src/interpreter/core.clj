@@ -58,7 +58,11 @@
   { (symbol '+) +
     (symbol '-) -
     (symbol '*) *
-    (symbol '/) / })
+    (symbol '/) /
+    (symbol '=) =
+    (symbol '<) <
+    (symbol '>) >
+   })
 
 (defn primitive-procedure?
   [procedure]
@@ -202,6 +206,16 @@
   [exp]
   (rest exp))
 
+(defn if?
+  [exp]
+  (tagged-list? exp 'if))
+
+(defn eval-if
+  [exp env]
+  (if (scheme-eval (nth exp 1) env)
+    (scheme-eval (nth exp 2) env)
+    (scheme-eval (nth exp 3) env)))
+
 (defn scheme-eval
   [exp env]
   (cond (self-evaluating? exp) exp
@@ -209,13 +223,10 @@
         (quoted? exp) (text-of-quotation exp)
         (begin? exp) (eval-sequence (begin-expressions exp) env)
         (lambda? exp) (make-procedure (parameters exp) (body exp) env)
-        ;(definition? exp) (eval-definition exp env)
-        ;(assignment? exp) (eval-assignment exp env)
+        (if? exp) (eval-if exp env)
         (list? exp) (scheme-apply
                       (scheme-eval (operator exp) env)
                       (eval-all (operands exp) env))))
-
-(eval-sequence '( (+ 1 2)) (setup-environment))
 
 (comment
   (scheme-eval '((lambda (x,y) (+ x y)) 1 2) (setup-environment))
