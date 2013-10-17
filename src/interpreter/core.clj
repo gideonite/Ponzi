@@ -228,37 +228,6 @@
                       (scheme-eval (operator exp) env)
                       (eval-all (operands exp) env))))
 
-(comment
-  (scheme-eval '((lambda (x,y) (+ x y)) 1 2) (setup-environment))
-
-  ;(list? exp) => true
-  (scheme-apply (scheme-eval (operator '((lambda (x,y) (+ x y)) 1 2)) (setup-environment))
-                (eval-all (operands '((lambda (x,y) (+ x y)) 1 2)) (setup-environment)))
-
-  ;(lambda? '(lambda (x,y) (+ x y))) => true
-  (scheme-eval '(lambda (x,y) (+ x y)) (setup-environment))
-  ;=> {:procedure true :arguments '(x,y) :body '(+ x y) :env { ...primitive-procedures }}
-
-  ;(self-evaluating? 1) => true
-  (eval-all '(1 2) (setup-environment))
-  ;=> (1 2)
-
-  (scheme-apply {:procedure true :parameters '(x,y) :body '((+ x y)) :env (setup-environment)} '(1 2))
-
-  ; (compound-procedure? {:procedure true ...}) => true
-  (eval-sequence
-    '((+ x y)) ; <= (:body procedure)
-    (extend-environment (setup-environment)   ; <= {...primitive procedures}
-                        (make-frame '(x y)    ; <= (:parameters procedure)
-                                    '(1 2)    ; <= arguments
-                                    )))
-
-  (eval-sequence
-    '((+ x y))
-    (cons {'x 1 'y 2} (setup-environment) ; { ...primitive procedures }
-          ))
-)
-
 ;;
 ;; ENVIRONMENT SETUP
 ;;
