@@ -237,6 +237,14 @@
 (defn setup-environment []
   (extend-environment the-empty-environmet primitive-procedures))
 
-(def ^:dynamic *the-global-env* (setup-environment))
+(def the-global-env (setup-environment))
 
-(def exp '((lambda (x,y) (+ x y)) 1 2))
+(defn -main
+  [& args]
+
+  (def welcome-msg "welcome!\n\n\n")
+  (def prompt "clem>\t")
+
+  (clojure.main/repl :init (fn [] (print welcome-msg))
+                     :prompt (fn [] (print prompt))
+                     :eval (fn [line] (scheme-eval line the-global-env))))
