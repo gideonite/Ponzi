@@ -224,7 +224,7 @@
         (begin? exp) (eval-sequence (begin-expressions exp) env)
         (lambda? exp) (make-procedure (parameters exp) (body exp) env)
         (if? exp) (eval-if exp env)
-        (list? exp) (scheme-apply
+        (list? exp) (scheme-apply   ;; in SICP this is hidden behind an opaque application abstraction
                       (scheme-eval (operator exp) env)
                       (eval-all (operands exp) env))))
 
