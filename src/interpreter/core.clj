@@ -3,56 +3,17 @@
 (def clojure-apply apply)
 
 ;;
-;; ENVIRONMENT
+;; ENVIRONMENT CREATION
 ;;
 
-(defn make-frame
-  [variables values]
-  (zipmap variables values))
+(defn an-empty-environmet
+  []
+  "returns a fresh empty environment. Internally this is an empty list."
+  '())
 
 (defn extend-environment
   [env frame]
-  (cons frame env))
-
-(defn self-evaluating?
-  [exp]
-  (cond
-    (number? exp) true))
-
-(defn variable?
-  [exp]
-  (symbol? exp))
-
-(defn enclosing-environment
-  [env]
-  (rest env))
-
-(defn lookup-variable-value
-  "Finds the value of the variable in the first frame that contains it.
-  Returns nil if no frames contain it."
-  [variable env]
-  (variable (first (filter variable env))))
-
-(defn set-variable-value
-  "Replaces the first frame containing the variable with a new frame in which
-  the variable's current value is replaced with the value provided.  Returns a
-  lazy-seq *of the new environment*."
-  [variable value env]
-  (lazy-seq
-    (if-let [[frame & frames] env]
-      (if (variable frame)
-        (cons (assoc frame variable value) frames)
-        (cons frame (set-variable-value variable value frames)))
-      (throw (Exception. (str "Unbound variable: SET! " variable))))))
-
-;; TODO: custom Exception?
-
-(comment
-  (set-variable-value :a 12 '({:a 40} {:b 12})))
-
-;;
-;; PROCEDURE
-;;
+  (conj env frame))
 
 (def primitive-procedures
   { (symbol '+) +
@@ -63,6 +24,67 @@
     (symbol '<) <
     (symbol '>) >
    })
+
+(defn setup-environment []
+  (extend-environment (an-empty-environmet) (atom primitive-procedures)))
+
+;;
+;; ENVIRONMENT FUNCTIONS
+;;
+
+(defn make-frame
+  "a frame a atom of a map of variables to values"
+  [variables values]
+  (atom (zipmap variables values)))
+
+(defn add-binding-frame!
+  "mutates the frame by either adding a new binding to the variable or
+  replacing the old binding with the value provided."
+  [frame variable value]
+  (swap! frame assoc variable value))
+
+(defn self-evaluating?
+  [exp]
+  (or (number? exp)))
+
+(defn variable?
+  [exp]
+  (symbol? exp))
+
+(defn enclosing-environment
+  [env]
+  (rest env))
+
+(defn lookup-frame
+  [variable env]
+  (first (filter #(variable @%) env)))
+
+(defn lookup-variable-value
+  "Finds the value of the variable in the first frame that contains it.
+  Returns nil if no frames contain it."
+  [variable env]
+  (let [value (variable @(lookup-frame variable env))]
+    (if (not value)
+      (throw (Exception. (str "Unbound symbol: '" variable "'"))))
+    value))
+
+(defn set-variable-value
+  "Replaces the first frame containing the variable with a new frame in which
+  the variable's current value is replaced with the value provided.  Returns a
+  lazy-seq *of the new environment*."
+  [variable value env]
+  (lazy-seq
+    (if-let [[frame & frames] env]
+      (if (variable frame)
+        (cons (swap! assoc variable value) frames)
+        (cons frame (set-variable-value variable value frames)))
+      (throw (Exception. (str "Unbound variable: SET! " variable))))))
+
+;; TODO: custom Exception?
+
+;;
+;; PROCEDURE
+;;
 
 (defn primitive-procedure?
   [procedure]
@@ -104,7 +126,8 @@
                                           (:body procedure)
                                           (extend-environment (:env procedure)
                                                               (make-frame (:parameters procedure)
-                                                                          arguments)))))
+                                                                          arguments)))
+        :else (throw (Exception. (str "Undefined procedure on arguments: " arguments)))))
 
 (defn assignment-variable
   [exp]
@@ -171,10 +194,14 @@
   (rest exp))
 
 (defn eval-all
+  "Evaluates each expression in exps in the environment env.  Literally maps
+  scheme-eval over exps"
   [exps env]
   (map #(scheme-eval % env) exps))
 
 (defn eval-sequence
+  "Evaluates each expressions in exps in the environment env.  Returns the
+  value of the last expression."
   [exps env]
   (last (eval-all exps env)))
 
@@ -223,27 +250,19 @@
         (quoted? exp) (text-of-quotation exp)
         (begin? exp) (eval-sequence (begin-expressions exp) env)
         (lambda? exp) (make-procedure (parameters exp) (body exp) env)
+        (definition? exp) (eval-definition exp env)
         (if? exp) (eval-if exp env)
         (list? exp) (scheme-apply   ;; in SICP this is hidden behind an opaque application abstraction
                       (scheme-eval (operator exp) env)
-                      (eval-all (operands exp) env))))
-
-;;
-;; ENVIRONMENT SETUP
-;;
-
-(def the-empty-environmet '())
-
-(defn setup-environment []
-  (extend-environment the-empty-environmet primitive-procedures))
-
-(def the-global-env (setup-environment))
+                      (eval-all (operands exp) env))
+        :else (throw (Exception. (str "EVAL error " exp)))))
 
 (defn -main
   [& args]
 
   (def welcome-msg "welcome!\n\n\n")
-  (def prompt "clem>\t")
+  (def prompt "clem>   ")
+  (def the-global-env (setup-environment))
 
   (clojure.main/repl :init (fn [] (print welcome-msg))
                      :prompt (fn [] (print prompt))
