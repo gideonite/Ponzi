@@ -139,10 +139,6 @@
 
 (declare scheme-eval)
 
-;(defn defintion?
-;  [exp]
-;  (tagged-list? exp 'define))
-
 (defn define-variable
   [variable value env]
   (lazy-seq
@@ -154,15 +150,24 @@
 
 (defn definition-variable
   [exp]
-  (second exp))
+  (nth exp 1))
 
 (defn definition-value
   [exp]
-  (second exp))
+  (nth exp 2))
 
 (defn eval-definition
+  "makes the binding to the first frame containing the variable specified in
+  the exp, or if no frame contains the variable, adds the binding to the first
+  frame in the env"
   [exp env]
-  (define-variable (definition-variable exp) (definition-value exp) env))
+  (let [variable (definition-variable exp)
+        value (definition-value exp)
+        lookup (lookup-frame variable env)
+        frame (if lookup lookup (first env))
+        evaluated (scheme-eval value env)]
+    (add-binding-frame! frame variable evaluated)
+    ))
 
 (defn eval-assignment
   [exp env]
@@ -242,6 +247,10 @@
   (if (scheme-eval (nth exp 1) env)
     (scheme-eval (nth exp 2) env)
     (scheme-eval (nth exp 3) env)))
+
+(defn definition?
+  [exp]
+  (tagged-list? exp 'define))
 
 (defn scheme-eval
   [exp env]
