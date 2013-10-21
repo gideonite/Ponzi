@@ -41,9 +41,15 @@
 
 (deftest eval-define
   (let [env (setup-environment)]
-    (scheme-eval '(define a 42) env)
-    (= 1 (count env))
-    (= 42 ('a @(first env)))
+    (testing "define constants (self-evaluating)"
+             (scheme-eval '(define a 42) env)
+             (scheme-eval '(define a 1) env)
+             (= 1 ('a @(first env))))
 
-    (scheme-eval '(define a 1) env)
-    (= 1 ('a @(first env)))))
+    (testing "bind lambdas to variables"
+             (scheme-eval '(define g (lambda (x y) (+ x y))) env)
+             (= 2 (scheme-eval '(g 1 1) env)))
+
+    (testing "basic recursion using a name binding (factorial)"
+             (scheme-eval '(define fact (lambda (x acc) (if (= 1 x) acc (* x (fact (- x 1) acc))))) env)
+             (= 120 (scheme-eval '(fact 5 1) env)))))

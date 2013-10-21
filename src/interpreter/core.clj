@@ -64,7 +64,7 @@
   Returns nil if no frames contain it."
   [variable env]
   (let [value (variable @(lookup-frame variable env))]
-    (if (not value)
+    (if (nil? value)
       (throw (Exception. (str "Unbound symbol: '" variable "'"))))
     value))
 
@@ -139,15 +139,6 @@
 
 (declare scheme-eval)
 
-(defn define-variable
-  [variable value env]
-  (lazy-seq
-    (if-let [[frame & frames] env]
-      (if (variable frame)
-        (cons (assoc frame variable value) frames)
-        (cons frame (set-variable-value variable value frames)))
-      (cons (assoc (first env) variable value) (rest env)))))
-
 (defn definition-variable
   [exp]
   (nth exp 1))
@@ -162,12 +153,10 @@
   frame in the env"
   [exp env]
   (let [variable (definition-variable exp)
-        value (definition-value exp)
+        value (scheme-eval (definition-value exp) env)
         lookup (lookup-frame variable env)
-        frame (if lookup lookup (first env))
-        evaluated (scheme-eval value env)]
-    (add-binding-frame! frame variable evaluated)
-    ))
+        frame (if lookup lookup (first env)) ]
+    (add-binding-frame! frame variable value)))
 
 (defn eval-assignment
   [exp env]
@@ -257,8 +246,8 @@
   (cond (self-evaluating? exp) exp
         (variable? exp) (lookup-variable-value exp env)
         (quoted? exp) (text-of-quotation exp)
-        (begin? exp) (eval-sequence (begin-expressions exp) env)
         (lambda? exp) (make-procedure (parameters exp) (body exp) env)
+        (begin? exp) (eval-sequence (begin-expressions exp) env)
         (definition? exp) (eval-definition exp env)
         (if? exp) (eval-if exp env)
         (list? exp) (scheme-apply   ;; in SICP this is hidden behind an opaque application abstraction
