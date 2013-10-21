@@ -65,7 +65,7 @@
   [variable env]
   (let [value (variable @(lookup-frame variable env))]
     (if (nil? value)
-      (throw (Exception. (str "Unbound symbol: '" variable "'"))))
+      (throw (Exception. (str "Unbound symbol: '" variable "'"))))  ;; TODO custom exceptions
     value))
 
 (defn set-variable-value
