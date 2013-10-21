@@ -44,12 +44,24 @@
     (testing "define constants (self-evaluating)"
              (scheme-eval '(define a 42) env)
              (scheme-eval '(define a 1) env)
-             (= 1 ('a @(first env))))
+             (is (= 1 ('a @(first env)))))
 
     (testing "bind lambdas to variables"
              (scheme-eval '(define g (lambda (x y) (+ x y))) env)
-             (= 2 (scheme-eval '(g 1 1) env)))
+             (is (= 2 (scheme-eval '(g 1 1) env))))
 
     (testing "basic recursion using a name binding (factorial)"
              (scheme-eval '(define fact (lambda (x acc) (if (= 1 x) acc (* x (fact (- x 1) acc))))) env)
-             (= 120 (scheme-eval '(fact 5 1) env)))))
+             (is (= 120 (scheme-eval '(fact 5 1) env))))))
+
+(deftest eval-set!
+  (let [env (setup-environment)]
+    (testing "throws an exception when trying to set an unbound symbol"
+             (try
+               (scheme-eval '(set! a 42) env)
+               (catch Exception e (is (= "SET! unbound symbol 'a'" (.getMessage e))))))
+
+    (testing "rebinds a bound symbol"
+             (scheme-eval '(define g (lambda (x y) (+ x y))) env)
+             (scheme-eval '(set! g 42) env)
+             (is (= 42 (scheme-eval 'g env))))))

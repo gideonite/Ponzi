@@ -160,12 +160,13 @@
 
 (defn eval-assignment
   [exp env]
-  ;; N.B. the eval call is now on the outside whereas in SICP it is on the
-  ;; inside.  It is so because the new environment has to be threaded through
-  ;; all the calls to eval Is this something insightful?
-  (scheme-eval (assignment-value exp)
-               (set-variable-value (assignment-variable exp)
-                                   (assignment-value exp))))
+  ;; NB requires refactoring
+  (let [variable (definition-variable exp)
+        value (scheme-eval (definition-value exp) env)
+        frame (lookup-frame variable env)]
+    (if (not frame)
+      (throw (Exception. (str "SET! unbound symbol '" variable "'")))
+      (add-binding-frame! frame variable value))))
 
 (defn eval-coll
   [coll env]
@@ -249,6 +250,7 @@
         (lambda? exp) (make-procedure (parameters exp) (body exp) env)
         (begin? exp) (eval-sequence (begin-expressions exp) env)
         (definition? exp) (eval-definition exp env)
+        (assignment? exp) (eval-assignment exp env)
         (if? exp) (eval-if exp env)
         (list? exp) (scheme-apply   ;; in SICP this is hidden behind an opaque application abstraction
                       (scheme-eval (operator exp) env)
