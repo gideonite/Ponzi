@@ -65,3 +65,11 @@
              (scheme-eval '(define g (lambda (x y) (+ x y))) env)
              (scheme-eval '(set! g 42) env)
              (is (= 42 (scheme-eval 'g env))))))
+
+(deftest eval-cond
+
+  (is (= '(greater)
+         (scheme-eval '(condy ((> 3 2) 'greater) ((< 3 2) 'lesser)) (setup-environment))))
+
+  (is (= '(lesser)
+         (scheme-eval '(condy ((< 3 2) 'greater) ((= 1 1) 'lesser)) (setup-environment)))))

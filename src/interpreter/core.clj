@@ -242,6 +242,24 @@
   [exp]
   (tagged-list? exp 'define))
 
+(defn cond?
+  [exp]
+  (tagged-list? exp 'condy))    ;; keep clojure macros from expanding `cond`
+
+(defn cond-clauses
+  [exp]
+  (rest exp))
+
+(defn expand-cond-clauses
+  [clauses]
+  (if-let [[pred exp] (first clauses)]
+    (list 'if pred exp
+          (expand-cond-clauses (rest clauses)))))
+
+(defn cond->if
+  [exp]
+  (expand-cond-clauses (cond-clauses exp)))
+
 (defn scheme-eval
   [exp env]
   (cond (self-evaluating? exp) exp
@@ -252,6 +270,7 @@
         (definition? exp) (eval-definition exp env)
         (assignment? exp) (eval-assignment exp env)
         (if? exp) (eval-if exp env)
+        (cond? exp) (scheme-eval (cond->if exp) env)
         (list? exp) (scheme-apply   ;; in SICP this is hidden behind an opaque application abstraction
                       (scheme-eval (operator exp) env)
                       (eval-all (operands exp) env))
@@ -263,6 +282,8 @@
   (def welcome-msg "welcome!\n\n\n")
   (def prompt "clem>   ")
   (def the-global-env (setup-environment))
+
+  (set! *print-level* 4)
 
   (clojure.main/repl :init (fn [] (print welcome-msg))
                      :prompt (fn [] (print prompt))
