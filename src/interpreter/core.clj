@@ -34,12 +34,14 @@
 ;; ENVIRONMENT FUNCTIONS
 ;;
 
+(declare scheme-eval)
+
 (defn make-frame
   "a frame a atom of a map of variables to values"
   [variables values]
   (atom (zipmap variables values)))
 
-(defn add-binding-frame!
+(defn add-binding-to-frame!
   "mutates the frame by either adding a new binding to the variable or
   replacing the old binding with the value provided."
   [frame variable value]
@@ -67,22 +69,27 @@
   [variable env]
   (let [value (variable @(lookup-frame variable env))]
     (if (nil? value)
-      (throw (Exception. (str "Unbound symbol: '" variable "'"))))  ;; TODO custom exceptions
+      (throw (IllegalArgumentException. (str "Unbound symbol: '" variable "'"))))
     value))
 
-(defn set-variable-value
-  "Replaces the first frame containing the variable with a new frame in which
-  the variable's current value is replaced with the value provided.  Returns a
-  lazy-seq *of the new environment*."
-  [variable value env]
-  (lazy-seq
-    (if-let [[frame & frames] env]
-      (if (variable frame)
-        (cons (swap! assoc variable value) frames)
-        (cons frame (set-variable-value variable value frames)))
-      (throw (Exception. (str "Unbound variable: SET! " variable))))))
+(defn definition-variable
+  [exp]
+  (nth exp 1))
 
-;; TODO: custom Exception?
+(defn definition-value
+  [exp]
+  (nth exp 2))
+
+(defn set-variable-value
+  "tries to bind the variable to the value in the first frame in the
+  environment.  If a frame is found then on-success is run on [frame variable
+  value] otherwise, on-fail is run on [environment variable value]"
+  [exp env on-success on-fail]
+  (let [variable (definition-variable exp)
+        value (scheme-eval (definition-value exp) env)
+        frame (lookup-frame variable env)]
+    (if frame (on-success frame variable value)
+      (on-fail env variable value))))
 
 ;;
 ;; PROCEDURE
@@ -129,46 +136,30 @@
                                           (extend-environment (:env procedure)
                                                               (make-frame (:parameters procedure)
                                                                           arguments)))
-        :else (throw (Exception. (str "Undefined procedure on arguments: " arguments)))))
+        :else (throw (IllegalArgumentException.
+                       (str "Undefined procedure on arguments: " arguments)))))
 
-(defn assignment-variable
-  [exp]
-  (second exp))
-
-(defn assignment-value
-  [exp]
-  (nth exp 2))
-
-(declare scheme-eval)
-
-(defn definition-variable
-  [exp]
-  (nth exp 1))
-
-(defn definition-value
-  [exp]
-  (nth exp 2))
+;;
+;; EVAL
+;;
 
 (defn eval-definition
   "makes the binding to the first frame containing the variable specified in
   the exp, or if no frame contains the variable, adds the binding to the first
   frame in the env"
   [exp env]
-  (let [variable (definition-variable exp)
-        value (scheme-eval (definition-value exp) env)
-        lookup (lookup-frame variable env)
-        frame (if lookup lookup (first env)) ]
-    (add-binding-frame! frame variable value)))
+  (set-variable-value exp env
+                      add-binding-to-frame!
+                      #(add-binding-to-frame! (first %1) %2 %3)))
 
 (defn eval-assignment
+  "throw an error if there's no frame containing the variable being set in the
+  exp"
   [exp env]
-  ;; NB requires refactoring
-  (let [variable (definition-variable exp)
-        value (scheme-eval (definition-value exp) env)
-        frame (lookup-frame variable env)]
-    (if (not frame)
-      (throw (Exception. (str "SET! unbound symbol '" variable "'")))
-      (add-binding-frame! frame variable value))))
+  (set-variable-value exp env
+                      add-binding-to-frame!
+                      #(throw (IllegalArgumentException.
+                                (str "SET! unbound symbol '" %2 "'")))))
 
 (defn eval-coll
   [coll env]
