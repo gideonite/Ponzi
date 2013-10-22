@@ -23,6 +23,8 @@
     (symbol '=) =
     (symbol '<) <
     (symbol '>) >
+    (symbol 'cons) cons
+    (symbol 'rest) rest
    })
 
 (defn setup-environment []
