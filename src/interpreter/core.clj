@@ -3,7 +3,7 @@
 (def clojure-apply apply)
 
 ;;
-;; ENVIRONMENT CREATION
+;; CREATE ENVIRONMENT
 ;;
 
 (defn an-empty-environmet
@@ -104,10 +104,6 @@
   [procedure arguments]
   (clojure-apply procedure arguments))
 
-(defn arguments
-  [exp]
-  (rest exp))
-
 (defn compound-procedure?
   [procedure]
   (:procedure procedure))
@@ -126,6 +122,9 @@
    :body body
    :env env})
 
+;;
+;; APPLY
+;;
 (declare eval-sequence)
 
 (defn scheme-apply
@@ -237,7 +236,7 @@
 
 (defn cond?
   [exp]
-  (tagged-list? exp 'condy))    ;; keep clojure macros from expanding `cond`
+  (tagged-list? exp 'condy))    ;; prevent clojure macros from expanding `cond`
 
 (defn cond-clauses
   [exp]
@@ -267,7 +266,7 @@
         (list? exp) (scheme-apply   ;; in SICP this is hidden behind an opaque application abstraction
                       (scheme-eval (operator exp) env)
                       (eval-all (operands exp) env))
-        :else (throw (Exception. (str "EVAL error " exp)))))
+        :else (throw (IllegalArgumentException. (str "EVAL error " exp)))))
 
 (defn -main
   [& args]
