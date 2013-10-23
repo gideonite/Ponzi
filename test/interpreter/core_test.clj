@@ -80,3 +80,7 @@
   (let [env (setup-environment)]
     (scheme-eval '(define (sum x y) (+ x y)) env)
     (is  (= 4 (scheme-eval '(sum 2 2) env)))))
+
+(deftest eval-let
+  (let [env (setup-environment)]
+    (is (= 42 (scheme-eval '(let ( (x 21) ) (+ x 21)) env)))))
