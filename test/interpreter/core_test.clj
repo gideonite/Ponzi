@@ -70,7 +70,6 @@
              (is (= 42 (scheme-eval 'g env))))))
 
 (deftest eval-cond
-
   (is (= '(greater)
          (scheme-eval '(condy ((> 3 2) 'greater) ((< 3 2) 'lesser)) (setup-environment))))
 
