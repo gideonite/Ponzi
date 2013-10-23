@@ -75,3 +75,8 @@
 
   (is (= '(lesser)
          (scheme-eval '(condy ((< 3 2) 'greater) ((= 1 1) 'lesser)) (setup-environment)))))
+
+(deftest eval-define-fun
+  (let [env (setup-environment)]
+    (scheme-eval '(define (sum x y) (+ x y)) env)
+    (is  (= 4 (scheme-eval '(sum 2 2) env)))))
