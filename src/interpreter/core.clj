@@ -143,13 +143,15 @@
 ;;
 
 (defn define->lambda
-  [exp env]
+  "(define (fun p q) <body>) -> (define fun (lambda p q) <body>)"
+  [exp]
   (let [[fun & params] `~(definition-variable exp)
         body `~(definition-value exp)]
     `(~'define ~fun (~'lambda ( ~@params) ~body))))
 
 (defn let->lambda
-  [exp env]
+  "let form -> closed over lambda form"
+  [exp]
   (let [[_let bindings body] exp
         vars (map first bindings)
         values (map second bindings)]
