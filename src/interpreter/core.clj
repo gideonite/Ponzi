@@ -148,6 +148,13 @@
         body `~(definition-value exp)]
     `(~'define ~fun (~'lambda ( ~@params) ~body))))
 
+(defn let->lambda
+  [exp env]
+  (let [[_let bindings body] exp
+        vars (map first bindings)
+        values (map second bindings)]
+    `((~'lambda ~vars ~body) ~@values)))
+
 (defn eval-definition
   "makes the binding to the first frame containing the variable specified in
   the exp, or if no frame contains the variable, adds the binding to the first
@@ -245,6 +252,10 @@
   (and (definition? exp)
        (list? (definition-variable exp))))
 
+(defn let?
+  [exp]
+  (tagged-list? exp 'let))
+
 (defn cond?
   [exp]
   (tagged-list? exp 'condy))    ;; prevent clojure macros from expanding `cond`
@@ -270,6 +281,7 @@
         (quoted? exp) (text-of-quotation exp)
         (lambda? exp) (make-procedure (parameters exp) (body exp) env)
         (fun-def? exp) (scheme-eval (define->lambda exp env) env)
+        (let? exp) (scheme-eval (let->lambda exp env) env)
         (begin? exp) (eval-sequence (begin-expressions exp) env)
         (definition? exp) (eval-definition exp env)
         (assignment? exp) (eval-assignment exp env)
