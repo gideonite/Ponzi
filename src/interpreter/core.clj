@@ -289,10 +289,10 @@
         (assignment? exp) (eval-assignment exp env)
         (if? exp) (eval-if exp env)
         (cond? exp) (scheme-eval (cond->if exp) env)
-        (list? exp) (scheme-apply   ;; in SICP this is hidden behind an opaque application abstraction
+        (seq? exp) (scheme-apply   ;; in SICP this is hidden behind an opaque application abstraction
                       (scheme-eval (operator exp) env)
                       (eval-all (operands exp) env))
-        :else (throw (IllegalArgumentException. (str "EVAL error " exp)))))
+        :else (throw (IllegalArgumentException. (str "EVAL error malformed expression: \"" (type exp) "\"")))))
 
 (defn -main
   [& args]
