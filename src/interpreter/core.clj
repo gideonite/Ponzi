@@ -8,7 +8,7 @@
 
 (defn an-empty-environmet
   []
-  "returns a fresh empty environment. Internally this is an empty list."
+  "Returns a fresh empty environment (i.e. an empty list)."
   '())
 
 (defn extend-environment
@@ -81,9 +81,9 @@
   (nth exp 2))
 
 (defn set-variable-value
-  "tries to bind the variable to the value in the first frame in the
-  environment.  If a frame is found then on-success is run on [frame variable
-  value] otherwise, on-fail is run on [environment variable value]"
+  "Tries to bind the variable to the value in the first frame in the
+  environment. If a frame is found then on-success is run on [frame variable
+  value] otherwise, on-fail is run on [environment variable value]."
   [exp env on-success on-fail]
   (let [variable (definition-variable exp)
         value (scheme-eval (definition-value exp) env)
@@ -109,14 +109,9 @@
   (:procedure procedure))
 
 (defn make-procedure
-  "returns the datum representing procedure.
+  "Returns the datum representing procedure.
   Has a field :procedure which is set to true"
   [parameters body env]
-  ;; N.B. lambdas evaluate to procedures and that's it!  (Crack open a REPL and
-  ;; evaluate `(lambda(x,y) (+ x y))`, it evaluates to some sort of procedure
-  ;; object.  When an enclosing S-expression drops through to the `list?` case
-  ;; then `apply` kicks in, asks whether it is a procedure call and does the
-  ;; appropriate thing).
   {:procedure true
    :parameters parameters
    :body body
@@ -298,7 +293,7 @@
   [& args]
 
   (def welcome-msg "welcome!\n\n\n")
-  (def prompt "clem>   ")
+  (def prompt "clem> ")
   (def the-global-env (setup-environment))
 
   (set! *print-level* 4)
