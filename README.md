@@ -8,10 +8,3 @@ A Clojure file for running a simple Scheme interpreter.  Nothing fancy, mostly m
 ## Usage
 
 Run tests with `lein test`.  Get a Scheme repl with `lein run -m interpreter.core`
-
-## License
-
-Copyright © 2013 FIXME
-
-Distributed under the Eclipse Public License either version 1.0 or (at
-your option) any later version.
