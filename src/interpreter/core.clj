@@ -25,6 +25,7 @@
     (symbol '>) >
     (symbol 'cons) cons
     (symbol 'rest) rest
+    (symbol 'print) println
    })
 
 (defn setup-environment []
@@ -298,6 +299,23 @@
 
   (set! *print-level* 4)
 
-  (clojure.main/repl :init (fn [] (print welcome-msg))
-                     :prompt (fn [] (print prompt))
-                     :eval (fn [line] (scheme-eval line the-global-env))))
+  (if (seq? args)
+    (doseq [filename args]
+      (doseq [form (read-string (str \( (slurp filename) \)))]
+        (scheme-eval form the-global-env)))
+    (clojure.main/repl :init (fn [] (print welcome-msg))
+                       :prompt (fn [] (print prompt))
+                       :eval (fn [line] (scheme-eval line the-global-env)))))
+
+
+;;
+;; CESK Machine
+;; Matt Might
+;; Dan Friedman
+;; Andrew Appel --- Princeton
+;;
+;; TODO:  Internal define?
+;;        Write a macro-expander
+;; letrec let-loop
+;;
+;; CPS your interpreter --- makes it easier to implement trampolines.
