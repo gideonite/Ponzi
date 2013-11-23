@@ -26,6 +26,8 @@
     (symbol 'cons) cons
     (symbol 'rest) rest
     (symbol 'print) println
+   'true true
+   'false false
    })
 
 (defn setup-environment []
@@ -258,6 +260,10 @@
   [exp]
   (tagged-list? exp 'condy))    ;; prevent clojure macros from expanding `cond`
 
+(defn bool?
+  [exp]
+  (or (= false exp) (= true exp)))
+
 (defn cond-clauses
   [exp]
   (rest exp))
@@ -276,6 +282,7 @@
   [exp env]
   (cond (self-evaluating? exp) exp
         (variable? exp) (lookup-variable-value exp env)
+        (bool? exp) exp
         (quoted? exp) (text-of-quotation exp)
         (lambda? exp) (make-procedure (parameters exp) (body exp) env)
         (fun-def? exp) (scheme-eval (define->lambda exp) env)
