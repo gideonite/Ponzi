@@ -26,8 +26,6 @@
     (symbol 'cons) cons
     (symbol 'rest) rest
     (symbol 'print) println
-   'true true
-   'false false
    })
 
 (defn setup-environment []
