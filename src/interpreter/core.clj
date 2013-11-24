@@ -138,7 +138,7 @@
 ;; EVAL
 ;;
 
-(defn define->lambda
+(defn definefun->lambda
   "(define (fun p q) <body>) -> (define fun (lambda p q) <body>)"
   [exp]
   (let [[fun & params] `~(definition-variable exp)
@@ -283,7 +283,7 @@
         (bool? exp) exp
         (quoted? exp) (text-of-quotation exp)
         (lambda? exp) (make-procedure (parameters exp) (body exp) env)
-        (fun-def? exp) (scheme-eval (define->lambda exp) env)
+        (fun-def? exp) (scheme-eval (definefun->lambda exp) env)
         (let? exp) (scheme-eval (let->lambda exp) env)
         (begin? exp) (eval-sequence (begin-expressions exp) env)
         (definition? exp) (eval-definition exp env)
@@ -299,7 +299,7 @@
   [& args]
 
   (def welcome-msg "welcome!\n\n\n")
-  (def prompt "clem> ")
+  (def prompt "hmm> ")
   (def the-global-env (setup-environment))
 
   (set! *print-level* 4)
@@ -311,7 +311,6 @@
     (clojure.main/repl :init (fn [] (print welcome-msg))
                        :prompt (fn [] (print prompt))
                        :eval (fn [line] (scheme-eval line the-global-env)))))
-
 
 ;;
 ;; CESK Machine
