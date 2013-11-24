@@ -71,10 +71,10 @@
 
 (deftest eval-cond
   (is (= '(greater)
-         (scheme-eval '(condy ((> 3 2) 'greater) ((< 3 2) 'lesser)) (setup-environment))))
+         (scheme-eval '(cond ((> 3 2) 'greater) ((< 3 2) 'lesser)) (setup-environment))))
 
   (is (= '(lesser)
-         (scheme-eval '(condy ((< 3 2) 'greater) ((= 1 1) 'lesser)) (setup-environment)))))
+         (scheme-eval '(cond ((< 3 2) 'greater) ((= 1 1) 'lesser)) (setup-environment)))))
 
 (deftest eval-define-function
   (let [env (setup-environment)]

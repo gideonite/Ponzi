@@ -1,4 +1,5 @@
-(ns interpreter.core)
+(ns interpreter.core
+  (:require [clojure.core.match :refer [match]]))
 
 (def clojure-apply apply)
 
@@ -278,22 +279,46 @@
 
 (defn scheme-eval
   [exp env]
-  (cond (self-evaluating? exp) exp
-        (variable? exp) (lookup-variable-value exp env)
-        (bool? exp) exp
-        (quoted? exp) (text-of-quotation exp)
-        (lambda? exp) (make-procedure (parameters exp) (body exp) env)
-        (fun-def? exp) (scheme-eval (definefun->lambda exp) env)
-        (let? exp) (scheme-eval (let->lambda exp) env)
-        (begin? exp) (eval-sequence (begin-expressions exp) env)
-        (definition? exp) (eval-definition exp env)
-        (assignment? exp) (eval-assignment exp env)
-        (if? exp) (eval-if exp env)
-        (cond? exp) (scheme-eval (cond->if exp) env)
-        (seq? exp) (scheme-apply   ;; in SICP this is hidden behind an opaque application abstraction
-                      (scheme-eval (operator exp) env)
-                      (eval-all (operands exp) env))
-        :else (throw (IllegalArgumentException. (str "EVAL error malformed expression: \"" (type exp) "\"")))))
+  (match [exp]
+    [(_ :guard number?)] exp
+    [(:or (_ :guard false?) (_ :guard true?))] exp
+    [(_ :guard symbol?)] (lookup-variable-value exp env)
+    [(['quote & e] :seq)] e
+    [(['lambda & e] :seq)] (let [parameters (first e) body (list (second e))]
+                             (make-procedure parameters body env))
+    [(['define (sym :guard (complement seq?)) v] :seq)] (eval-definition exp env)
+    [(['define (_ :guard seq?) & r] :seq)] (scheme-eval (definefun->lambda exp) env)
+    [(['let ( _ :guard seq?) & r] :seq)] (scheme-eval (let->lambda exp) env)
+    [(['begin & e] :seq)] (eval-sequence (begin-expressions exp) env)
+    [(['set! & e] :seq)] (eval-assignment exp env)
+    [(['if & e] :seq)] (eval-if exp env)
+    [(['cond & e] :seq)] (scheme-eval (cond->if exp) env)
+    :else (scheme-apply (scheme-eval  (first exp) env)
+                        (eval-all     (rest exp)  env))))
+
+(comment
+  (scheme-eval 42 (setup-environment))
+  (scheme-eval false (setup-environment))
+  (scheme-eval '+ (setup-environment))
+  (scheme-eval '(quote exp) (setup-environment))
+  (scheme-eval '(lambda (x) x) (setup-environment))
+  (scheme-eval '(lambda (x y) (+ x y)) (setup-environment))
+  (scheme-eval '(+ 1 1) (setup-environment))
+  (scheme-eval '((lambda (x) x) 42) (setup-environment))
+  (scheme-eval '((lambda (x y) (+ x y)) 1 1) (setup-environment))
+  (scheme-eval '(a b c) (setup-environment))  ;; TODO: improve this error
+  (scheme-eval '(define universe 42) (setup-environment))
+  (scheme-eval '(define id (lambda (x) x)) (setup-environment))
+  (scheme-eval '(define (id x) x) (setup-environment))
+  (scheme-eval '(let ( (x 42) ) x) (setup-environment))
+  (scheme-eval '(begin (+ 42 42) 42) (setup-environment))
+  (scheme-eval '(begin (define x 42) (set! x (/ 42 2)) x) (setup-environment))
+  (scheme-eval '(if (= 42 42) 0 1) (setup-environment))
+  (scheme-eval '(cond ( (= 42 42) 42) ( (= 12 12) 12)) (setup-environment))
+  )
+
+;; TODO string literals.
+;; TODO give cond the power of else
 
 (defn -main
   [& args]
