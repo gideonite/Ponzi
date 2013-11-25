@@ -19,18 +19,6 @@
   (testing ""
            (is (primitive-procedure? +))))
 
-(deftest tagged-list?-test
-  (is (= true (tagged-list? '(:quote '(1 2 3)) :quote))))
-
-(deftest quoted?-test
-  (testing ""
-           (is (= true (quoted? '(quote (1 2 3)))))
-           (is (= false (quoted? '(1 2 3 4))))))
-
-(deftest text-of-quotation-test
-  (is (= '(1 2 3)
-         (text-of-quotation '(:quote 1 2 3)))))
-
 ;; eval driven tests
 
 (deftest eval-self-evaluating

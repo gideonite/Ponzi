@@ -49,14 +49,6 @@
   [frame variable value]
   (swap! frame assoc variable value))
 
-(defn self-evaluating?
-  [exp]
-  (or (number? exp)))
-
-(defn variable?
-  [exp]
-  (symbol? exp))
-
 (defn enclosing-environment
   [env]
   (rest env))
@@ -176,18 +168,6 @@
   [coll env]
   (map #(scheme-eval % env) coll))
 
-(defn tagged-list?
-  [exp tag]
-  (= tag (first exp)))
-
-(defn assignment?
-  [exp]
-  (tagged-list? exp 'set!))
-
-(defn begin?
-  [exp]
-  (tagged-list? exp 'begin))
-
 (defn begin-expressions
   [exp]
   (rest exp))
@@ -204,64 +184,11 @@
   [exps env]
   (last (eval-all exps env)))
 
-(defn lambda?
-  [exp]
-  (tagged-list? exp 'lambda))
-
-(defn parameters
- [exp]
-  (second exp))
-
-(defn body
- [exp]
-  (rest (rest exp)))
-
-(defn operator
-  [exp]
-  (first exp))
-
-(defn operands
-  [exp]
-  (rest exp))
-
-(defn quoted?
-  [exp]
-  (tagged-list? exp 'quote))
-
-(defn text-of-quotation
-  [exp]
-  (rest exp))
-
-(defn if?
-  [exp]
-  (tagged-list? exp 'if))
-
 (defn eval-if
   [exp env]
   (if (scheme-eval (nth exp 1) env)
     (scheme-eval (nth exp 2) env)
     (scheme-eval (nth exp 3) env)))
-
-(defn definition?
-  [exp]
-  (tagged-list? exp 'define))
-
-(defn fun-def?
-  [exp]
-  (and (definition? exp)
-       (list? (definition-variable exp))))
-
-(defn let?
-  [exp]
-  (tagged-list? exp 'let))
-
-(defn cond?
-  [exp]
-  (tagged-list? exp 'condy))    ;; prevent clojure macros from expanding `cond`
-
-(defn bool?
-  [exp]
-  (or (= false exp) (= true exp)))
 
 (defn cond-clauses
   [exp]
