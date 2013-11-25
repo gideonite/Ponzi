@@ -22,13 +22,13 @@
 ;; eval driven tests
 
 (deftest eval-self-evaluating
-  (is (= 1 (scheme-eval 1 (setup-environment)))))
+  (is (= 1 (scheme-eval 1 (fresh-env) (fresh-store)))))
 
 (deftest eval-primitive-procedure
-  (is (= 2 (scheme-eval '(+ 1 1) (setup-environment)))))
+  (is (= 2 (scheme-eval '(+ 1 1) (fresh-env)))))
 
 (deftest eval-define
-  (let [env (setup-environment)]
+  (let [env (fresh-env)]
     (testing "define constants (self-evaluating)"
              (scheme-eval '(define a 42) env)
              (scheme-eval '(define a 1) env)
@@ -43,7 +43,7 @@
              (is (= 120 (scheme-eval '(fact 5 1) env))))))
 
 (deftest eval-set!
-  (let [env (setup-environment)]
+  (let [env (fresh-env)]
     ;; different exceptions throw different signatures, in any case something is
     ;; thrown here
     ;;
@@ -59,16 +59,16 @@
 
 (deftest eval-cond
   (is (= '(greater)
-         (scheme-eval '(cond ((> 3 2) 'greater) ((< 3 2) 'lesser)) (setup-environment))))
+         (scheme-eval '(cond ((> 3 2) 'greater) ((< 3 2) 'lesser)) (fresh-env))))
 
   (is (= '(lesser)
-         (scheme-eval '(cond ((< 3 2) 'greater) ((= 1 1) 'lesser)) (setup-environment)))))
+         (scheme-eval '(cond ((< 3 2) 'greater) ((= 1 1) 'lesser)) (fresh-env)))))
 
 (deftest eval-define-function
-  (let [env (setup-environment)]
+  (let [env (fresh-env)]
     (scheme-eval '(define (sum x y) (+ x y)) env)
     (is  (= 4 (scheme-eval '(sum 2 2) env)))))
 
 (deftest eval-let
-  (let [env (setup-environment)]
+  (let [env (fresh-env)]
     (is (= 42 (scheme-eval '(let ( (x 21) ) (+ x 21)) env)))))

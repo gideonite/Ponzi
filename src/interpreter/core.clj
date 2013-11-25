@@ -7,14 +7,12 @@
 ;; CREATE ENVIRONMENT
 ;;
 
-(defn an-empty-environmet
-  []
-  "Returns a fresh empty environment (i.e. an empty list)."
-  '())
+(defn new-env [] '())
+(defn fresh-store [] {})
 
 (defn extend-environment
-  [env frame]
-  (conj env frame))
+  [env [frame store]]
+  [(conj env frame) store])
 
 (def primitive-procedures
   { (symbol '+) +
@@ -29,19 +27,32 @@
     (symbol 'print) println
    })
 
-(defn setup-environment []
-  (extend-environment (an-empty-environmet) (atom primitive-procedures)))
+(defn make-frame
+  "[Sequable [variable value] pairs] store -> [frame store].
+  Takes a lists of bindings and returns a new frame and a new store."
+  [bindings store]
+  (loop [frame {}
+         store store
+         bindings (map (fn [  [sym proc]]
+                              [sym (gensym) proc])
+                       (seq bindings))]
+    (if (seq bindings)
+      (let [[variable gsym value] (first bindings)]
+        (recur (assoc frame variable gsym)
+               (assoc store gsym value)
+               (rest bindings)))
+      [frame store])))
+
+(defn fresh-env []
+  "-> [env store]"
+  (extend-environment (new-env)
+                      (make-frame primitive-procedures (fresh-store))))
 
 ;;
 ;; ENVIRONMENT FUNCTIONS
 ;;
 
 (declare scheme-eval)
-
-(defn make-frame
-  "a frame a atom of a map of variables to values"
-  [variables values]
-  (atom (zipmap variables values)))
 
 (defn add-binding-to-frame!
   "mutates the frame by either adding a new binding to the variable or
@@ -58,13 +69,25 @@
   (first (filter #(variable @%) env)))
 
 (defn lookup-variable-value
-  "Finds the value of the variable in the first frame that contains it.
+  "symbol [env store] -> value (or nil).
+  Finds the value of the variable in the first frame that contains it.
   Returns nil if no frames contain it."
-  [variable env]
-  (let [value (variable @(lookup-frame variable env))]
-    (if (nil? value)
-      (throw (IllegalArgumentException. (str "Unbound symbol: '" variable "'"))))
-    value))
+  [variable [env store]]
+  ;(println env)
+  (when-let [frame (first (filter #(% variable) env))]
+    (let [sym (frame variable)
+          value (store sym)]
+      value)))
+
+
+
+
+
+;; TODO left off with this. No longer using lookup-frame (should I get rid of
+;; it). Continue going through the various cases and figuring out how to
+;; support them. Presumably, now that lookup works, the next part of the job is
+;; to figure out how to add to the environment. What are the cases here?
+;; -Lambdas -define -set! Right?
 
 (defn definition-variable
   [exp]
@@ -74,13 +97,13 @@
   [exp]
   (nth exp 2))
 
-(defn set-variable-value
+#_(defn set-variable-value
   "Tries to bind the variable to the value in the first frame in the
   environment. If a frame is found then on-success is run on [frame variable
   value] otherwise, on-fail is run on [environment variable value]."
-  [exp env on-success on-fail]
+  [exp [env store] on-success on-fail]
   (let [variable (definition-variable exp)
-        value (scheme-eval (definition-value exp) env)
+        value (scheme-eval (definition-value exp) [env store])
         frame (lookup-frame variable env)]
     (if frame (on-success frame variable value)
       (on-fail env variable value))))
@@ -117,13 +140,13 @@
 (declare eval-sequence)
 
 (defn scheme-apply
-  [procedure arguments]
+  [procedure arguments store]
   (cond (primitive-procedure? procedure) (apply-primitive-procedure procedure arguments)
         (compound-procedure? procedure) (eval-sequence
                                           (:body procedure)
                                           (extend-environment (:env procedure)
-                                                              (make-frame (:parameters procedure)
-                                                                          arguments)))
+                                                              (make-frame (map vector
+                                                                               (:parameters procedure) arguments) store)))
         :else (throw (IllegalArgumentException.
                        (str "Undefined procedure on arguments: " arguments)))))
 
@@ -146,16 +169,16 @@
         values (map second bindings)]
     `((~'lambda ~vars ~body) ~@values)))
 
-(defn eval-definition
+#_(defn eval-definition
   "makes the binding to the first frame containing the variable specified in
   the exp, or if no frame contains the variable, adds the binding to the first
   frame in the env"
-  [exp env]
-  (set-variable-value exp env
+  [exp [env store]]
+  (set-variable-value exp [env store]
                       add-binding-to-frame!
                       #(add-binding-to-frame! (first %1) %2 %3)))
 
-(defn eval-assignment
+#_(defn eval-assignment
   "throw an error if there's no frame containing the variable being set in the
   exp"
   [exp env]
@@ -164,10 +187,6 @@
                       #(throw (IllegalArgumentException.
                                 (str "SET! unbound symbol '" %2 "'")))))
 
-(defn eval-coll
-  [coll env]
-  (map #(scheme-eval % env) coll))
-
 (defn begin-expressions
   [exp]
   (rest exp))
@@ -175,20 +194,20 @@
 (defn eval-all
   "Evaluates each expression in exps in the environment env.  Literally maps
   scheme-eval over exps"
-  [exps env]
-  (map #(scheme-eval % env) exps))
+  [exps [env store]]
+  (map #(scheme-eval % [env store]) exps))
 
 (defn eval-sequence
   "Evaluates each expressions in exps in the environment env.  Returns the
   value of the last expression."
-  [exps env]
-  (last (eval-all exps env)))
+  [exps [env store]]
+  (last (eval-all exps [env store])))
 
 (defn eval-if
-  [exp env]
-  (if (scheme-eval (nth exp 1) env)
-    (scheme-eval (nth exp 2) env)
-    (scheme-eval (nth exp 3) env)))
+  [exp env store]
+  (if (scheme-eval (nth exp 1) [env store])
+    (scheme-eval (nth exp 2) [env store])
+    (scheme-eval (nth exp 3) [env store])))
 
 (defn cond-clauses
   [exp]
@@ -205,43 +224,44 @@
   (expand-cond-clauses (cond-clauses exp)))
 
 (defn scheme-eval
-  [exp env]
+  [exp [env store]]
   (match [exp]
     [(_ :guard number?)] exp
     [(:or (_ :guard false?) (_ :guard true?))] exp
-    [(_ :guard symbol?)] (lookup-variable-value exp env)
+    [(_ :guard symbol?)] (lookup-variable-value exp [env store])
     [(['quote & e] :seq)] e
     [(['lambda & e] :seq)] (let [parameters (first e) body (list (second e))]
                              (make-procedure parameters body env))
-    [(['define (sym :guard (complement seq?)) v] :seq)] (eval-definition exp env)
-    [(['define (_ :guard seq?) & r] :seq)] (scheme-eval (definefun->lambda exp) env)
-    [(['let ( _ :guard seq?) & r] :seq)] (scheme-eval (let->lambda exp) env)
-    [(['begin & e] :seq)] (eval-sequence (begin-expressions exp) env)
-    [(['set! & e] :seq)] (eval-assignment exp env)
-    [(['if & e] :seq)] (eval-if exp env)
-    [(['cond & e] :seq)] (scheme-eval (cond->if exp) env)
-    :else (scheme-apply (scheme-eval  (first exp) env)
-                        (eval-all     (rest exp)  env))))
-
+    ;[(['define (sym :guard (complement seq?)) v] :seq)] (eval-definition exp env)
+    [(['define (_ :guard seq?) & r] :seq)] (scheme-eval (definefun->lambda exp) [env store])
+    [(['let ( _ :guard seq?) & r] :seq)] (scheme-eval (let->lambda exp) [env store])
+    [(['begin & e] :seq)] (eval-sequence (begin-expressions exp) env) ;; TODO : remove begin-expressions
+    ;[(['set! & e] :seq)] (eval-assignment exp env)
+    [(['if & e] :seq)] (eval-if exp [env store])
+    [(['cond & e] :seq)] (scheme-eval (cond->if exp) [env store])
+    :else (scheme-apply (scheme-eval  (first exp) [env store])
+                        (eval-all     (rest exp)  [env store])
+                        store)))
 (comment
-  (scheme-eval 42 (setup-environment))
-  (scheme-eval false (setup-environment))
-  (scheme-eval '+ (setup-environment))
-  (scheme-eval '(quote exp) (setup-environment))
-  (scheme-eval '(lambda (x) x) (setup-environment))
-  (scheme-eval '(lambda (x y) (+ x y)) (setup-environment))
-  (scheme-eval '(+ 1 1) (setup-environment))
-  (scheme-eval '((lambda (x) x) 42) (setup-environment))
-  (scheme-eval '((lambda (x y) (+ x y)) 1 1) (setup-environment))
-  (scheme-eval '(a b c) (setup-environment))  ;; TODO: improve this error
-  (scheme-eval '(define universe 42) (setup-environment))
-  (scheme-eval '(define id (lambda (x) x)) (setup-environment))
-  (scheme-eval '(define (id x) x) (setup-environment))
-  (scheme-eval '(let ( (x 42) ) x) (setup-environment))
-  (scheme-eval '(begin (+ 42 42) 42) (setup-environment))
-  (scheme-eval '(begin (define x 42) (set! x (/ 42 2)) x) (setup-environment))
-  (scheme-eval '(if (= 42 42) 0 1) (setup-environment))
-  (scheme-eval '(cond ( (= 42 42) 42) ( (= 12 12) 12)) (setup-environment))
+  (scheme-eval 42 (fresh-env))
+  (scheme-eval false (fresh-env))
+  (scheme-eval '+ (fresh-env))
+  (scheme-eval '(quote exp) (fresh-env))
+  (scheme-eval '(lambda (x) x) (fresh-env))
+  (scheme-eval '(lambda (x y) (+ x y)) (fresh-env))
+  (scheme-eval '(+ 1 1) (fresh-env))
+  (scheme-eval '((lambda (x) x) 42) (fresh-env))
+  (scheme-eval '((lambda (x y) (+ x y)) 1 1) (fresh-env))
+  (scheme-eval '(a b c) (fresh-env))  ;; TODO: improve this error
+
+  ;; (scheme-eval '(define universe 42) (fresh-env))
+  ;; (scheme-eval '(define id (lambda (x) x)) (fresh-env))
+  ;; (scheme-eval '(define (id x) x) (fresh-env))
+  ;; (scheme-eval '(let ( (x 42) ) x) (fresh-env))
+  ;; (scheme-eval '(begin (+ 42 42) 42) (fresh-env))
+  ;; (scheme-eval '(begin (define x 42) (set! x (/ 42 2)) x) (fresh-env))
+  ;; (scheme-eval '(if (= 42 42) 0 1) (fresh-env))
+  ;; (scheme-eval '(cond ( (= 42 42) 42) ( (= 12 12) 12)) (fresh-env))
   )
 
 ;; TODO string literals.
@@ -252,7 +272,7 @@
 
   (def welcome-msg "welcome!\n\n\n")
   (def prompt "hmm> ")
-  (def the-global-env (setup-environment))
+  (def the-global-env (fresh-env))
 
   (set! *print-level* 4)
 
@@ -260,7 +280,7 @@
     (doseq [filename args]
       (doseq [form (read-string (str \( (slurp filename) \)))]
         (scheme-eval form the-global-env)))
-    (clojure.main/repl :init (fn [] (print welcome-msg))
+    #_(clojure.main/repl :init (fn [] (print welcome-msg))
                        :prompt (fn [] (print prompt))
                        :eval (fn [line] (scheme-eval line the-global-env)))))
 
