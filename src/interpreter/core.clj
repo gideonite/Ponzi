@@ -33,13 +33,12 @@
   [bindings store]
   (loop [frame {}
          store store
-         bindings (map (fn [  [sym proc]]
-                              [sym (gensym) proc])
-                       (seq bindings))]
+         bindings bindings]
     (if (seq bindings)
-      (let [[variable gsym value] (first bindings)]
-        (recur (assoc frame variable gsym)
-               (assoc store gsym value)
+      (let [[variable value] (first bindings)
+            addr (gensym)]
+        (recur (assoc frame variable addr)
+               (assoc store addr value)
                (rest bindings)))
       [frame store])))
 
@@ -73,13 +72,10 @@
   Finds the value of the variable in the first frame that contains it.
   Returns nil if no frames contain it."
   [variable [env store]]
-  ;(println env)
   (when-let [frame (first (filter #(% variable) env))]
-    (let [sym (frame variable)
-          value (store sym)]
+    (let [addr (frame variable)
+          value (store addr)]
       value)))
-
-
 
 
 
@@ -112,6 +108,7 @@
 ;; PROCEDURE
 ;;
 
+;; TODO this is dumb... memoize it or something?
 (defn primitive-procedure?
   [procedure]
   (contains? (into #{} (vals primitive-procedures))
@@ -128,11 +125,11 @@
 (defn make-procedure
   "Returns the datum representing procedure.
   Has a field :procedure which is set to true"
-  [parameters body env]
+  [parameters body [env store]]
   {:procedure true
    :parameters parameters
    :body body
-   :env env})
+   :env [env store]})
 
 ;;
 ;; APPLY
@@ -141,14 +138,15 @@
 
 (defn scheme-apply
   [procedure arguments store]
-  (cond (primitive-procedure? procedure) (apply-primitive-procedure procedure arguments)
-        (compound-procedure? procedure) (eval-sequence
-                                          (:body procedure)
-                                          (extend-environment (:env procedure)
-                                                              (make-frame (map vector
-                                                                               (:parameters procedure) arguments) store)))
+  (cond (primitive-procedure? procedure)
+          (apply-primitive-procedure procedure arguments)
+        (compound-procedure? procedure)
+          (eval-sequence (:body procedure)
+                         (extend-environment (first (:env procedure))
+                                             (make-frame (map vector
+                                                              (:parameters procedure) arguments) (merge store (second (:env procedure))))))
         :else (throw (IllegalArgumentException.
-                       (str "Undefined procedure on arguments: " arguments)))))
+                       (str "Undefined procedure: <" procedure "> on arguments: " (seq arguments))))))
 
 ;;
 ;; EVAL
@@ -192,19 +190,19 @@
   (rest exp))
 
 (defn eval-all
-  "Evaluates each expression in exps in the environment env.  Literally maps
-  scheme-eval over exps"
+  "Evaluates each expression in exps in the environment env. Literally maps
+  scheme-eval over exps."
   [exps [env store]]
   (map #(scheme-eval % [env store]) exps))
 
 (defn eval-sequence
-  "Evaluates each expressions in exps in the environment env.  Returns the
+  "Evaluates each expressions in exps in the environment env. Returns the
   value of the last expression."
   [exps [env store]]
   (last (eval-all exps [env store])))
 
 (defn eval-if
-  [exp env store]
+  [exp [env store]]
   (if (scheme-eval (nth exp 1) [env store])
     (scheme-eval (nth exp 2) [env store])
     (scheme-eval (nth exp 3) [env store])))
@@ -223,25 +221,31 @@
   [exp]
   (expand-cond-clauses (cond-clauses exp)))
 
+
+;; TODO
+;;    Do procedures need to have a reference to the store in which they were
+;;    created? In which case, what's the point of this whole exercise?
+
 (defn scheme-eval
   [exp [env store]]
   (match [exp]
-    [(_ :guard number?)] exp
-    [(:or (_ :guard false?) (_ :guard true?))] exp
-    [(_ :guard symbol?)] (lookup-variable-value exp [env store])
-    [(['quote & e] :seq)] e
-    [(['lambda & e] :seq)] (let [parameters (first e) body (list (second e))]
-                             (make-procedure parameters body env))
-    ;[(['define (sym :guard (complement seq?)) v] :seq)] (eval-definition exp env)
-    [(['define (_ :guard seq?) & r] :seq)] (scheme-eval (definefun->lambda exp) [env store])
-    [(['let ( _ :guard seq?) & r] :seq)] (scheme-eval (let->lambda exp) [env store])
-    [(['begin & e] :seq)] (eval-sequence (begin-expressions exp) env) ;; TODO : remove begin-expressions
-    ;[(['set! & e] :seq)] (eval-assignment exp env)
-    [(['if & e] :seq)] (eval-if exp [env store])
-    [(['cond & e] :seq)] (scheme-eval (cond->if exp) [env store])
-    :else (scheme-apply (scheme-eval  (first exp) [env store])
-                        (eval-all     (rest exp)  [env store])
-                        store)))
+         [(_ :guard number?)] exp
+         [(:or (_ :guard false?) (_ :guard true?))] exp
+         [(_ :guard symbol?)] (lookup-variable-value exp [env store])
+         [(['quote & e] :seq)] e
+         [(['lambda & e] :seq)] (let [parameters (first e) body (rest e)]
+                                  (make-procedure parameters body [env store]))
+         ;[(['define (sym :guard (complement seq?)) v] :seq)] (eval-definition exp env)
+         ;[(['define (_ :guard seq?) & r] :seq)] (scheme-eval (definefun->lambda exp) [env store])
+         [(['let ( _ :guard seq?) & r] :seq)] (scheme-eval (let->lambda exp) [env store])
+         [(['begin & e] :seq)] (eval-sequence (begin-expressions exp) env) ;; TODO : remove begin-expressions
+         ;[(['set! & e] :seq)] (eval-assignment exp env)
+         [(['if & e] :seq)] (eval-if exp [env store])
+         [(['cond & e] :seq)] (scheme-eval (cond->if exp) [env store])
+         :else (scheme-apply (scheme-eval  (first exp) [env store])
+                             (eval-all     (rest exp)  [env store])
+                             store)))
+
 (comment
   (scheme-eval 42 (fresh-env))
   (scheme-eval false (fresh-env))
@@ -251,8 +255,21 @@
   (scheme-eval '(lambda (x y) (+ x y)) (fresh-env))
   (scheme-eval '(+ 1 1) (fresh-env))
   (scheme-eval '((lambda (x) x) 42) (fresh-env))
+  (scheme-eval '(((lambda (x) x)
+                    (lambda (x) x)) 42) (fresh-env))
   (scheme-eval '((lambda (x y) (+ x y)) 1 1) (fresh-env))
+  (scheme-eval '(((lambda (x) (lambda () x)) 42)) (fresh-env))
   (scheme-eval '(a b c) (fresh-env))  ;; TODO: improve this error
+  (scheme-eval '(if (= 42 42) 'success 'fail) (fresh-env))
+  (scheme-eval '(if (= 42 43) 'fail 'success) (fresh-env))
+  (scheme-eval '(((lambda (f1)
+                          ((lambda (x) (f1 (x x)))
+                             (lambda (x) (f1 (lambda (y) ((x x) y))))))
+                    (lambda (f2)
+                            (lambda (n)
+                                    (if (= n 0)
+                                      1
+                                      (* n (f2 (- n 1))))))) 5) (fresh-env))
 
   ;; (scheme-eval '(define universe 42) (fresh-env))
   ;; (scheme-eval '(define id (lambda (x) x)) (fresh-env))
@@ -260,7 +277,6 @@
   ;; (scheme-eval '(let ( (x 42) ) x) (fresh-env))
   ;; (scheme-eval '(begin (+ 42 42) 42) (fresh-env))
   ;; (scheme-eval '(begin (define x 42) (set! x (/ 42 2)) x) (fresh-env))
-  ;; (scheme-eval '(if (= 42 42) 0 1) (fresh-env))
   ;; (scheme-eval '(cond ( (= 42 42) 42) ( (= 12 12) 12)) (fresh-env))
   )
 
@@ -274,7 +290,7 @@
   (def prompt "hmm> ")
   (def the-global-env (fresh-env))
 
-  (set! *print-level* 4)
+  (set! *print-level* 40)
 
   (if (seq? args)
     (doseq [filename args]
