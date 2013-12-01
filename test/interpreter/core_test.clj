@@ -20,7 +20,8 @@
            (is (= + (eval-in-freshenv-val '+)))))
 
 (deftest quote
-  (testing (is (= '(exp) (eval-in-freshenv-val '(quote exp))))))
+  (testing (is (= 'exp (eval-in-freshenv-val '(quote exp)))))
+  (testing (is (= '(foo x y z) (eval-in-freshenv-val '(quote (foo x y z)))))))
 
 (deftest lambda
   (testing "eval identity function"
@@ -34,4 +35,16 @@
 
 (deftest application
   (testing "primitive procedure"
-           (is (= 2 (eval-in-freshenv '(+ 1 1))))))
+           (is (= 2 (eval-in-freshenv-val '(+ 1 1)))))
+  (testing "identity function"
+           (is (= 42 (eval-in-freshenv-val '((lambda (x) x) 42)))))
+  (testing "apply sum function"
+           (is (= 42 (eval-in-freshenv-val '((lambda (x y) (+ x y)) 40 2)))))
+  (testing "closure"
+           (is (= 42 (eval-in-freshenv-val '(((lambda (x) (lambda () x)) 42)))))))
+
+(deftest if-statement
+  (testing "true predicate"
+           (is (= 'success (eval-in-freshenv-val '(if (= 42 42) 'success 'fail)))))
+  (testing "false predicate"
+           (is (= 'success (eval-in-freshenv-val '(if (= 42 666) 'fail 'success))))))

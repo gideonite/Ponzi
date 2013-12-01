@@ -216,13 +216,15 @@
   "Evaluates each expressions in exps in the environment env. Returns the
   value of the last expression."
   [exps env store]
+  (log "eval-sequence" (first exps) (first env) store)
   (last (eval-all exps env store)))
 
 (defn eval-if
   [exp env store]
-  (if (scheme-eval (nth exp 1) [env store])
-    (scheme-eval (nth exp 2) [env store])
-    (scheme-eval (nth exp 3) [env store])))
+  (log "eval-if" (scheme-eval (nth exp 1) env store))
+  (if (getval (scheme-eval (nth exp 1) env store))
+    (scheme-eval (nth exp 2) env store)
+    (scheme-eval (nth exp 3) env store)))
 
 (defn cond-clauses
   [exp]
@@ -273,11 +275,6 @@
 ;; TODO refactor this into tests.
 
 (comment
-  (scheme-eval '((lambda (x) x) 42) (fresh-env))
-  (scheme-eval '(((lambda (x) x)
-                    (lambda (x) x)) 42) (fresh-env))
-  (scheme-eval '((lambda (x y) (+ x y)) 1 1) (fresh-env))
-  (scheme-eval '(((lambda (x) (lambda () x)) 42)) (fresh-env))
   (scheme-eval '(a b c) (fresh-env))  ;; TODO: improve this error
   (scheme-eval '(if (= 42 42) 'success 'fail) (fresh-env))
   (scheme-eval '(if (= 42 43) 'fail 'success) (fresh-env))
