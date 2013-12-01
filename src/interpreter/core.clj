@@ -282,15 +282,7 @@
 
 (comment
   (scheme-eval '(a b c) (fresh-env))  ;; TODO: improve this error
-  (scheme-eval '(((lambda (f1)
-                          ((lambda (x) (f1 (x x)))
-                             (lambda (x) (f1 (lambda (y) ((x x) y))))))
-                    (lambda (f2)
-                            (lambda (n)
-                                    (if (= n 0)
-                                      1
-                                      (* n (f2 (- n 1))))))) 5) (fresh-env))
-  ;; (scheme-eval '(define (id x) x) (fresh-env))
+
   ;; (scheme-eval '(let ( (x 42) ) x) (fresh-env))
   ;; (scheme-eval '(begin (+ 42 42) 42) (fresh-env))
   ;; (scheme-eval '(begin (define x 42) (set! x (/ 42 2)) x) (fresh-env))

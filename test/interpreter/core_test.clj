@@ -41,7 +41,16 @@
   (testing "apply sum function"
            (is (= 42 (eval-in-freshenv-val '((lambda (x y) (+ x y)) 40 2)))))
   (testing "closure"
-           (is (= 42 (eval-in-freshenv-val '(((lambda (x) (lambda () x)) 42)))))))
+           (is (= 42 (eval-in-freshenv-val '(((lambda (x) (lambda () x)) 42))))))
+  (testing "Y"
+           (is (= 120 (eval-in-freshenv-val '(((lambda (f1)
+                                                       ((lambda (x) (f1 (x x)))
+                                                          (lambda (x) (f1 (lambda (y) ((x x) y))))))
+                                                 (lambda (f2)
+                                                         (lambda (n)
+                                                                 (if (= n 0)
+                                                                   1
+                                                                   (* n (f2 (- n 1))))))) 5))))))
 
 (deftest if-statement
   (testing "true predicate"
