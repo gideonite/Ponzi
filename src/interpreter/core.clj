@@ -199,14 +199,14 @@
       [nil (cons new-frame (rest env))]
       )))
 
-#_(defn eval-assignment
-  "throw an error if there's no frame containing the variable being set in the
-  exp"
-  [exp env]
-  (set-variable-value exp env
-                      add-binding-to-frame!
-                      #(throw (IllegalArgumentException.
-                                (str "SET! unbound symbol '" %2 "'")))))
+(defn eval-assignment
+  [variable [value env] store]
+  (log "assignment!" variable value)
+  (if-let [frame (first (filter #(% variable) env))]
+    (let [addr (frame variable)]
+      (swap! store assoc addr value))
+    (throw (IllegalArgumentException.
+             (str "SET! unbound symbol '" variable "'")))))
 
 (defn begin-expressions
   [exp]
@@ -258,8 +258,8 @@
          [(['lambda & e] :seq)] (let [parameters (first e) body (rest e)]
                                   [(make-procedure parameters body env) env])
          [(['if & e] :seq)] (eval-if exp env store)
-         [(['define (sym :guard (complement seq?)) v] :seq)] (do (eval-definition sym (scheme-eval v env store) store)) 
-         ;[(['set! & e] :seq)] (eval-assignment exp env)
+         [(['define (sym :guard (complement seq?)) v] :seq)] (eval-definition sym (scheme-eval v env store) store)
+         [(['set! sym v] :seq)] (eval-assignment sym (scheme-eval v env store) store)
          ;[(['define (_ :guard seq?) & r] :seq)] (scheme-eval (definefun->lambda exp) [env store])
          ;[(['let ( _ :guard seq?) & r] :seq)] (scheme-eval (let->lambda exp) env store)
          ;[(['begin & e] :seq)] (eval-sequence (begin-expressions exp) env store) ;; TODO : remove begin-expressions

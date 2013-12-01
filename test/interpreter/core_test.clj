@@ -65,3 +65,13 @@
   (testing "Lambda value" (is (:procedure (lookup-variable-value 'id
                                                                  (second (eval-in-freshenv '(define id (lambda (x) x))))
                                                                  *the-store*)))))
+
+(deftest setBANG
+  (testing "Fails when the variable doesn't exist."
+           (is (try (eval-in-freshenv '(set! universe 42))
+                 (catch IllegalArgumentException e
+                   true))))
+  (testing "Overwrites the value bound to variable."
+           (is (= 666 (let [env (second (eval-in-freshenv '(define universe 42)))]
+                        (eval-assignment 'universe [666 env] *the-store*)
+                        (lookup-variable-value 'universe env *the-store*))))))
