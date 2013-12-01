@@ -9,7 +9,7 @@
 
 (defn eval-in-freshenv-val
   [exp]
-  (first (eval-in-freshenv exp)))
+  (getval (eval-in-freshenv exp)))
 
 (deftest constants
   (testing "numbers"
@@ -48,3 +48,11 @@
            (is (= 'success (eval-in-freshenv-val '(if (= 42 42) 'success 'fail)))))
   (testing "false predicate"
            (is (= 'success (eval-in-freshenv-val '(if (= 42 666) 'fail 'success))))))
+
+(deftest define
+  (testing "Numerical value" (= 42 (lookup-variable-value 'universe
+                                        (second (eval-in-freshenv '(define universe 42)))
+                                        *the-store*)))
+  (testing "Lambda value" (is (:procedure (lookup-variable-value 'id
+                                                                 (second (eval-in-freshenv '(define id (lambda (x) x))))
+                                                                 *the-store*)))))

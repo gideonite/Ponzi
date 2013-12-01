@@ -37,7 +37,7 @@
    })
 
 (defn make-frame
-  "[Sequable [variable value] pairs] store -> [frame store].
+  "[& [variable value]] store -> [frame store].
   Takes a lists of bindings and returns a new frame and a new store."
   [bindings store]
   (loop [frame {}
@@ -77,16 +77,17 @@
   (first (filter #(variable @%) env)))
 
 (defn lookup-variable-value
-  "symbol [env store] -> value (or nil).
+  "Symbol env store -> value (or nil).
+
   Finds the value of the variable in the first frame that contains it.
   Returns nil if no frames contain it."
   [variable env store]
+  (println (first env))
   (when-let [frame (first (filter #(% variable) env))]
+    (log "found-frame!" frame)
     (let [addr (frame variable)
           value (@store addr)]
       value)))
-
-
 
 ;; TODO left off with this. No longer using lookup-frame (should I get rid of
 ;; it). Continue going through the various cases and figuring out how to
@@ -182,16 +183,21 @@
     `((~'lambda ~vars ~body) ~@values)))
 
 (defn eval-definition
-  "Binds the variable to the value in the first frame containing the variable.
-  If no frame contains the variable, adds the binding to the first frame."
-  [variable value [env store]]
+  "Variable value env store -> [nil env].
+
+  Binds the variable to the value in the first frame containing the variable.
+  If no frame contains the variable, adds the binding to the first frame.
+  "
+  [variable [value env] store]
+  (log "eval-def:" variable ", first frame:" (first (filter #(% variable) env)))
   (if-let [frame (first (filter #(% variable) env))]
     (let [addr (frame variable)]
       (swap! store assoc addr value)
       [nil env])
-    [nil
-     (cons (merge (first (make-frame [[variable value]] store)) (first env))
-           (rest env))]))
+    (let [frame (make-frame [[variable value]] store)
+          new-frame (merge frame (first env))]
+      [nil (cons new-frame (rest env))]
+      )))
 
 #_(defn eval-assignment
   "throw an error if there's no frame containing the variable being set in the
@@ -252,7 +258,7 @@
          [(['lambda & e] :seq)] (let [parameters (first e) body (rest e)]
                                   [(make-procedure parameters body env) env])
          [(['if & e] :seq)] (eval-if exp env store)
-         [(['define (sym :guard (complement seq?)) v] :seq)] (eval-definition sym (scheme-eval v [env store]) [env store])
+         [(['define (sym :guard (complement seq?)) v] :seq)] (do (eval-definition sym (scheme-eval v env store) store)) 
          ;[(['set! & e] :seq)] (eval-assignment exp env)
          ;[(['define (_ :guard seq?) & r] :seq)] (scheme-eval (definefun->lambda exp) [env store])
          ;[(['let ( _ :guard seq?) & r] :seq)] (scheme-eval (let->lambda exp) env store)
@@ -276,8 +282,6 @@
 
 (comment
   (scheme-eval '(a b c) (fresh-env))  ;; TODO: improve this error
-  (scheme-eval '(if (= 42 42) 'success 'fail) (fresh-env))
-  (scheme-eval '(if (= 42 43) 'fail 'success) (fresh-env))
   (scheme-eval '(((lambda (f1)
                           ((lambda (x) (f1 (x x)))
                              (lambda (x) (f1 (lambda (y) ((x x) y))))))
@@ -286,9 +290,6 @@
                                     (if (= n 0)
                                       1
                                       (* n (f2 (- n 1))))))) 5) (fresh-env))
-
-  (scheme-eval '(define universe 42) (fresh-env))
-  (scheme-eval '(define id (lambda (x) x)) (fresh-env))
   ;; (scheme-eval '(define (id x) x) (fresh-env))
   ;; (scheme-eval '(let ( (x 42) ) x) (fresh-env))
   ;; (scheme-eval '(begin (+ 42 42) 42) (fresh-env))
