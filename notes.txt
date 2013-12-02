@@ -1,0 +1,10 @@
+CESK Machine
+Matt Might
+Dan Friedman
+Andrew Appel --- Princeton
+
+TODO:  Internal define?
+       Write a macro-expander
+letrec let-loop
+
+CPS your interpreter --- makes it easier to implement trampolines.
