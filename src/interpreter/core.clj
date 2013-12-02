@@ -82,7 +82,6 @@
   Finds the value of the variable in the first frame that contains it.
   Returns nil if no frames contain it."
   [variable env store]
-  (println (first env))
   (when-let [frame (first (filter #(% variable) env))]
     (log "found-frame!" frame)
     (let [addr (frame variable)
@@ -152,6 +151,8 @@
         args (map getval arguments)]
 
     (log "apply, proc:"  proc)
+    (log "primtive-procedure?" (primitive-procedure? proc))
+    (log "compound-procedure?" (compound-procedure? proc))
 
     (cond (primitive-procedure? proc)
             [(apply-primitive-procedure proc args) env]
@@ -260,7 +261,7 @@
          [(['if & e] :seq)] (eval-if exp env store)
          [(['define (sym :guard (complement seq?)) v] :seq)] (eval-definition sym (scheme-eval v env store) store)
          [(['set! sym v] :seq)] (eval-assignment sym (scheme-eval v env store) store)
-         ;[(['define (_ :guard seq?) & r] :seq)] (scheme-eval (definefun->lambda exp) [env store])
+         [(['define (_ :guard seq?) & r] :seq)] (scheme-eval (definefun->lambda exp) env store)
          ;[(['let ( _ :guard seq?) & r] :seq)] (scheme-eval (let->lambda exp) env store)
          ;[(['begin & e] :seq)] (eval-sequence (begin-expressions exp) env store) ;; TODO : remove begin-expressions
          ;[(['cond & e] :seq)] (scheme-eval (cond->if exp) env store)

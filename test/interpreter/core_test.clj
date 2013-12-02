@@ -60,11 +60,16 @@
 
 (deftest define
   (testing "Numerical value" (= 42 (lookup-variable-value 'universe
-                                        (second (eval-in-freshenv '(define universe 42)))
-                                        *the-store*)))
+                                                          (second (eval-in-freshenv '(define universe 42)))
+                                                          *the-store*)))
   (testing "Lambda value" (is (:procedure (lookup-variable-value 'id
                                                                  (second (eval-in-freshenv '(define id (lambda (x) x))))
-                                                                 *the-store*)))))
+                                                                 *the-store*))))
+
+  (testing "Define a lambda macro"
+           (is (let [env (second (eval-in-freshenv '(define (id x) x)))]
+                 (= 42 (first (scheme-apply [(lookup-variable-value 'id env *the-store*) env]
+                                            '((42)) env *the-store*)))))))
 
 (deftest setBANG
   (testing "Fails when the variable doesn't exist."
