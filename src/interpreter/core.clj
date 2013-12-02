@@ -223,8 +223,12 @@
   "Evaluates each expressions in exps in the environment env. Returns the
   value of the last expression."
   [exps env store]
-  (log "eval-sequence" (first exps) (first env) store)
-  (last (eval-all exps env store)))
+  (loop [exps exps
+         env env]
+    (let [[value env] (scheme-eval (first exps) env store)]
+      (if (seq (rest exps))
+        (recur (rest exps) env)
+        [value env]))))
 
 (defn eval-if
   [exp env store]
@@ -248,7 +252,7 @@
   (expand-cond-clauses (cond-clauses exp)))
 
 (defn scheme-eval
-  "exp env store -> [value exp]."
+  "exp env store -> [value env]."
   [exp env store]
   (log "eval" exp)
   (match [exp]
@@ -262,8 +266,8 @@
          [(['define (sym :guard (complement seq?)) v] :seq)] (eval-definition sym (scheme-eval v env store) store)
          [(['set! sym v] :seq)] (eval-assignment sym (scheme-eval v env store) store)
          [(['define (_ :guard seq?) & r] :seq)] (scheme-eval (definefun->lambda exp) env store)
-         ;[(['let ( _ :guard seq?) & r] :seq)] (scheme-eval (let->lambda exp) env store)
-         ;[(['begin & e] :seq)] (eval-sequence (begin-expressions exp) env store) ;; TODO : remove begin-expressions
+         [(['let ( _ :guard seq?) & r] :seq)] (scheme-eval (let->lambda exp) env store)
+         [(['begin & e] :seq)] (eval-sequence e env store)
          ;[(['cond & e] :seq)] (scheme-eval (cond->if exp) env store)
          :else (scheme-apply (scheme-eval  (first exp) env store)
                              (eval-all     (rest exp) env store)
@@ -309,15 +313,3 @@
     #_(clojure.main/repl :init (fn [] (print welcome-msg))
                        :prompt (fn [] (print prompt))
                        :eval (fn [line] (scheme-eval line the-global-env)))))
-
-;;
-;; CESK Machine
-;; Matt Might
-;; Dan Friedman
-;; Andrew Appel --- Princeton
-;;
-;; TODO:  Internal define?
-;;        Write a macro-expander
-;; letrec let-loop
-;;
-;; CPS your interpreter --- makes it easier to implement trampolines.

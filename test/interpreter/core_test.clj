@@ -65,7 +65,6 @@
   (testing "Lambda value" (is (:procedure (lookup-variable-value 'id
                                                                  (second (eval-in-freshenv '(define id (lambda (x) x))))
                                                                  *the-store*))))
-
   (testing "Define a lambda macro"
            (is (let [env (second (eval-in-freshenv '(define (id x) x)))]
                  (= 42 (first (scheme-apply [(lookup-variable-value 'id env *the-store*) env]
@@ -80,3 +79,11 @@
            (is (= 666 (let [env (second (eval-in-freshenv '(define universe 42)))]
                         (eval-assignment 'universe [666 env] *the-store*)
                         (lookup-variable-value 'universe env *the-store*))))))
+
+(deftest let-macro
+  (testing (is (= 42 (eval-in-freshenv-val '(let ((x 42) (route 66)) x))))))
+
+(deftest begin-stmt
+  (testing "Returns last expression" (is (= 3 (eval-in-freshenv-val '(begin 1 2 3)))))
+  (testing "Define within a begin"
+           (is (= 42 (eval-in-freshenv-val '(begin (define x 42) x))))))
