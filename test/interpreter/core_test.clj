@@ -87,3 +87,8 @@
   (testing "Returns last expression" (is (= 3 (eval-in-freshenv-val '(begin 1 2 3)))))
   (testing "Define within a begin"
            (is (= 42 (eval-in-freshenv-val '(begin (define x 42) x))))))
+
+(eval-in-freshenv '(cond ( ((= 42 42) 'hello))))
+
+(second '(cond ( ((= 42 42) 'hello)
+                 ((< 1 0)   'goodbye))))

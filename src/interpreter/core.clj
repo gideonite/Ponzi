@@ -10,7 +10,7 @@
 
 (def ^:dynamic *the-store* (atom {}))
 
-(def ^:dynamic *debug* true)
+(def ^:dynamic *debug* false)
 
 (defmacro log [& xs] `(when *debug* (println ~@xs)))
 
@@ -197,8 +197,7 @@
       [nil env])
     (let [frame (make-frame [[variable value]] store)
           new-frame (merge frame (first env))]
-      [nil (cons new-frame (rest env))]
-      )))
+      [nil (cons new-frame (rest env))])))
 
 (defn eval-assignment
   [variable [value env] store]
@@ -247,9 +246,21 @@
     (list 'if pred exp
           (expand-cond-clauses (rest clauses)))))
 
-(defn cond->if
+#_(defn cond->if
   [exp]
   (expand-cond-clauses (cond-clauses exp)))
+
+(defn cond->if
+  [pairs]
+  `(if ~(first (first pairs) ~(second (first pairs))))
+  #_(reduce (fn [pair if-exp]
+            (concat if-exp (list `(if ~(first pair) ~(second pair)))))
+          `(if ~(first (first pairs) (second (first pairs))))
+          (rest pairs)))
+
+;; TODO figure out how to write this annoying macro!
+
+(cond->if '( ((= 42 42) 'hello) ))
 
 (defn scheme-eval
   "exp env store -> [value env]."
@@ -268,7 +279,7 @@
          [(['define (_ :guard seq?) & r] :seq)] (scheme-eval (definefun->lambda exp) env store)
          [(['let ( _ :guard seq?) & r] :seq)] (scheme-eval (let->lambda exp) env store)
          [(['begin & e] :seq)] (eval-sequence e env store)
-         ;[(['cond & e] :seq)] (scheme-eval (cond->if exp) env store)
+         [(['cond & e] :seq)] (cond->if (first e)) #_(scheme-eval (cond->if exp) env store)
          :else (scheme-apply (scheme-eval  (first exp) env store)
                              (eval-all     (rest exp) env store)
                              env
