@@ -29,6 +29,7 @@
     (symbol 'cons) cons
     (symbol 'rest) rest
     (symbol 'print) println
+    'nil nil
    })
 
 (defn make-frame
@@ -192,15 +193,22 @@
     (list 'if pred exp
           (expand-cond-clauses (rest clauses)))))
 
-(defn cond->if
+#_(defn cond->if
   [pairs]
   (loop [pairs pairs
          if-exp 'n]
     (if (seq pairs)
       (let [[pred exp] (first pairs)]
       (recur (rest pairs)
-             (concat `(if ~pred ~exp) (list if-exp))))
+             (concat (list if-exp) `(if ~pred ~exp))))
       if-exp)))
+
+(defn cond->if
+  [pairs]
+  (if-let [pair (first pairs)]
+    `(if ~(first pair) ~(second pair)
+       ~(cond->if (rest pairs)))
+    nil))
 
 (defn scheme-eval
   "exp env store -> [value env]."
@@ -219,7 +227,7 @@
          [(['define (_ :guard seq?) & r] :seq)] (scheme-eval (definefun->lambda exp) env store)
          [(['let ( _ :guard seq?) & r] :seq)] (scheme-eval (let->lambda exp) env store)
          [(['begin & e] :seq)] (eval-sequence e env store)
-         [(['cond & e] :seq)] (cond->if e) #_(scheme-eval (cond->if exp) env store)
+         [(['cond & e] :seq)] (scheme-eval (cond->if e) env store)
          :else (scheme-apply (scheme-eval  (first exp) env store)
                              (eval-all     (rest exp) env store)
                              env

@@ -88,6 +88,6 @@
   (testing "Define within a begin"
            (is (= 42 (eval-in-freshenv-val '(begin (define x 42) x))))))
 
-(eval-in-freshenv '(cond
-  [(= 2 3) 'wrong!]
-  [(= 2 2) 'ok]))
+(eval-in-freshenv-val '(cond
+                     [(= 2 3) 'wrong!]
+                     [(= 2 2) 'ok]))
