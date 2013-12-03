@@ -3,11 +3,6 @@
 
 (def clojure-apply apply)
 
-;;
-;; CREATE ENVIRONMENT
-;;
-
-
 (def ^:dynamic *the-store* (atom {}))
 
 (def ^:dynamic *debug* false)
@@ -56,10 +51,6 @@
                        (make-frame primitive-procedures (fresh-store)))
    *the-store*])
 
-;;
-;; ENVIRONMENT FUNCTIONS
-;;
-
 (declare scheme-eval)
 
 (defn add-binding-to-frame!
@@ -67,14 +58,6 @@
   replacing the old binding with the value provided."
   [frame variable value]
   (swap! frame assoc variable value))
-
-(defn enclosing-environment
-  [env]
-  (rest env))
-
-(defn lookup-frame
-  [variable env]
-  (first (filter #(variable @%) env)))
 
 (defn lookup-variable-value
   "Symbol env store -> value (or nil).
@@ -88,40 +71,10 @@
           value (@store addr)]
       value)))
 
-;; TODO left off with this. No longer using lookup-frame (should I get rid of
-;; it). Continue going through the various cases and figuring out how to
-;; support them. Presumably, now that lookup works, the next part of the job is
-;; to figure out how to add to the environment. What are the cases here?
-;; -Lambdas -define -set! Right?
-
-(defn definition-variable
-  [exp]
-  (nth exp 1))
-
-(defn definition-value
-  [exp]
-  (nth exp 2))
-
-#_(defn set-variable-value
-  "Tries to bind the variable to the value in the first frame in the
-  environment. If a frame is found then on-success is run on [frame variable
-  value] otherwise, on-fail is run on [environment variable value]."
-  [exp [env store] on-success on-fail]
-  (let [variable (definition-variable exp)
-        value (scheme-eval (definition-value exp) [env store])
-        frame (lookup-frame variable env)]
-    (if frame (on-success frame variable value)
-      (on-fail env variable value))))
-
-;;
-;; PROCEDURE
-;;
-
-;; TODO this is dumb... memoize it or something?
-(defn primitive-procedure?
-  [procedure]
-  (contains? (into #{} (vals primitive-procedures))
-             procedure))
+(def primitive-procedure?
+  (memoize (fn [procedure]
+             (contains? (into #{} (vals primitive-procedures))
+                        procedure))))
 
 (defn apply-primitive-procedure
   [procedure arguments]
@@ -140,9 +93,6 @@
    :body body
    :env env})
 
-;;
-;; APPLY
-;;
 (declare eval-sequence)
 
 (defn scheme-apply
@@ -164,15 +114,11 @@
             :else (throw (IllegalArgumentException.
                           (str "Undefined procedure: <" procedure "> on arguments: " (seq arguments)))))))
 
-;;
-;; EVAL
-;;
-
 (defn definefun->lambda
   "(define (fun p q) <body>) -> (define fun (lambda p q) <body>)"
   [exp]
-  (let [[fun & params] `~(definition-variable exp)
-        body `~(definition-value exp)]
+  (let [[fun & params] `~(nth exp 1)
+        body `~(nth exp 2)]
     `(~'define ~fun (~'lambda ( ~@params) ~body))))
 
 (defn let->lambda
@@ -246,21 +192,15 @@
     (list 'if pred exp
           (expand-cond-clauses (rest clauses)))))
 
-#_(defn cond->if
-  [exp]
-  (expand-cond-clauses (cond-clauses exp)))
-
 (defn cond->if
   [pairs]
-  `(if ~(first (first pairs) ~(second (first pairs))))
-  #_(reduce (fn [pair if-exp]
-            (concat if-exp (list `(if ~(first pair) ~(second pair)))))
-          `(if ~(first (first pairs) (second (first pairs))))
-          (rest pairs)))
-
-;; TODO figure out how to write this annoying macro!
-
-(cond->if '( ((= 42 42) 'hello) ))
+  (loop [pairs pairs
+         if-exp 'n]
+    (if (seq pairs)
+      (let [[pred exp] (first pairs)]
+      (recur (rest pairs)
+             (concat `(if ~pred ~exp) (list if-exp))))
+      if-exp)))
 
 (defn scheme-eval
   "exp env store -> [value env]."
@@ -279,7 +219,7 @@
          [(['define (_ :guard seq?) & r] :seq)] (scheme-eval (definefun->lambda exp) env store)
          [(['let ( _ :guard seq?) & r] :seq)] (scheme-eval (let->lambda exp) env store)
          [(['begin & e] :seq)] (eval-sequence e env store)
-         [(['cond & e] :seq)] (cond->if (first e)) #_(scheme-eval (cond->if exp) env store)
+         [(['cond & e] :seq)] (cond->if e) #_(scheme-eval (cond->if exp) env store)
          :else (scheme-apply (scheme-eval  (first exp) env store)
                              (eval-all     (rest exp) env store)
                              env
@@ -293,22 +233,7 @@
            (second (scheme-eval
                      (first exps) [env store])))))
 
-
-;; TODO refactor this into tests.
-
-(comment
-  (scheme-eval '(a b c) (fresh-env))  ;; TODO: improve this error
-
-  ;; (scheme-eval '(let ( (x 42) ) x) (fresh-env))
-  ;; (scheme-eval '(begin (+ 42 42) 42) (fresh-env))
-  ;; (scheme-eval '(begin (define x 42) (set! x (/ 42 2)) x) (fresh-env))
-  ;; (scheme-eval '(cond ( (= 42 42) 42) ( (= 12 12) 12)) (fresh-env))
-  )
-
-;; TODO string literals.
-;; TODO give cond the power of else
-
-(defn -main
+#_(defn -main
   [& args]
 
   (def welcome-msg "welcome!\n\n\n")
@@ -321,6 +246,6 @@
     (doseq [filename args]
       (doseq [form (read-string (str \( (slurp filename) \)))]
         (scheme-eval form the-global-env)))
-    #_(clojure.main/repl :init (fn [] (print welcome-msg))
+    (clojure.main/repl :init (fn [] (print welcome-msg))
                        :prompt (fn [] (print prompt))
                        :eval (fn [line] (scheme-eval line the-global-env)))))
