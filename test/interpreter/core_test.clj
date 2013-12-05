@@ -95,3 +95,5 @@
 (eval-in-freshenv-val '(cond
                      [(= 2 3) 'wrong!]
                      [(= 2 2) 'ok]))
+
+(eval-in-freshenv '(cons "asdf" '()))

@@ -240,27 +240,20 @@
                              env
                              store)))
 
-(defn eval-loop
-  [exps [env store]]
-  (loop [exps exps
-         env env]
-    (recur (rest exps)
-           (second (scheme-eval
-                     (first exps) [env store])))))
+(defn repl [[res env]]
+  (println res)
+  (print "=>  ")
+  (flush)
+  (recur (scheme-eval (read-string (read-line)) env *the-store*)))
 
-#_(defn -main
+(defn -main
   [& args]
-
-  (def welcome-msg "welcome!\n\n\n")
-  (def prompt "hmm> ")
-  (def the-global-env (fresh-env))
 
   (set! *print-level* 4)
 
-  (if (seq? args)
-    (doseq [filename args]
-      (doseq [form (read-string (str \( (slurp filename) \)))]
-        (scheme-eval form the-global-env)))
-    (clojure.main/repl :init (fn [] (print welcome-msg))
-                       :prompt (fn [] (print prompt))
-                       :eval (fn [line] (scheme-eval line the-global-env)))))
+  (let [[env store] (fresh-env)]
+    (if (seq? args)
+      (doseq [filename args]
+        (doseq [form (read-string (slurp filename))]
+          (scheme-eval form env store)))
+      (repl (scheme-eval '(cons "ponzi-scheme" '()) env store)))))
