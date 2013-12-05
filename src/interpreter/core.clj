@@ -32,6 +32,13 @@
     'nil nil
    })
 
+(defn primitive-value?
+  [v]
+  (or (number? v)
+      (string? v)
+      (false? v)
+      (true? v)))
+
 (defn make-frame
   "[& [variable value]] store -> [frame store].
   Takes a lists of bindings and returns a new frame and a new store."
@@ -216,8 +223,7 @@
   [exp env store]
   (log "eval" exp)
   (match [exp]
-         [(_ :guard number?)] [exp env]
-         [(:or (_ :guard false?) (_ :guard true?))] [exp env]
+         [(_ :guard primitive-value?)] [exp env]
          [(_ :guard symbol?)] [(lookup-variable-value exp env store) env]
          [(['quote & e] :seq)] [(first e) env]
          [(['lambda & e] :seq)] (let [parameters (first e) body (rest e)]
