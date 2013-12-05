@@ -56,8 +56,12 @@
   (testing "true predicate"
            (is (= 'success (eval-in-freshenv-val '(if (= 42 42) 'success 'fail)))))
   (testing "false predicate"
-           (is (= 'success (eval-in-freshenv-val '(if (= 42 666) 'fail 'success))))))
-
+           (is (= 'success (eval-in-freshenv-val '(if (= 42 666) 'fail 'success)))))
+  (testing "take into account side-effect in predicate."
+           (is (= 'success (eval-in-freshenv-val '(let ( (x 42) )
+                                                    (if (begin (set! x 12)
+                                                               (= x 12))
+                                                      'success 'fail)))))))
 (deftest define
   (testing "Numerical value" (= 42 (lookup-variable-value 'universe
                                                           (second (eval-in-freshenv '(define universe 42)))

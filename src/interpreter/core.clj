@@ -151,7 +151,8 @@
   (log "assignment!" variable value)
   (if-let [frame (first (filter #(% variable) env))]
     (let [addr (frame variable)]
-      (swap! store assoc addr value))
+      (swap! store assoc addr value)
+      [value env])
     (throw (IllegalArgumentException.
              (str "SET! unbound symbol '" variable "'")))))
 
@@ -179,9 +180,9 @@
 (defn eval-if
   [exp env store]
   (log "eval-if" (scheme-eval (nth exp 1) env store))
-  (if (getval (scheme-eval (nth exp 1) env store))
-    (scheme-eval (nth exp 2) env store)
-    (scheme-eval (nth exp 3) env store)))
+  (let [[v env] (scheme-eval (nth exp 1) env store)]
+    (or (and v (scheme-eval (nth exp 2) env store))
+        (scheme-eval (nth exp 3) env store))))
 
 (defn cond-clauses
   [exp]
