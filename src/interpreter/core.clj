@@ -10,6 +10,7 @@
 (defmacro log [& xs] `(when *debug* (println ~@xs)))
 
 (defn new-env [] '())
+
 (defn fresh-store [] (reset! *the-store* {}) *the-store*)
 
 (defn getval [[value env]] value)
@@ -190,26 +191,6 @@
   (let [[v env] (scheme-eval (nth exp 1) env store)]
     (or (and v (scheme-eval (nth exp 2) env store))
         (scheme-eval (nth exp 3) env store))))
-
-(defn cond-clauses
-  [exp]
-  (rest exp))
-
-(defn expand-cond-clauses
-  [clauses]
-  (if-let [[pred exp] (first clauses)]
-    (list 'if pred exp
-          (expand-cond-clauses (rest clauses)))))
-
-#_(defn cond->if
-  [pairs]
-  (loop [pairs pairs
-         if-exp 'n]
-    (if (seq pairs)
-      (let [[pred exp] (first pairs)]
-      (recur (rest pairs)
-             (concat (list if-exp) `(if ~pred ~exp))))
-      if-exp)))
 
 (defn cond->if
   [pairs]
