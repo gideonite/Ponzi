@@ -1,16 +1,38 @@
 (ns interpreter.arithmetic)
 
-(def primitive-procedures
+(def lookup
   {'+ +
    '- -
    '/ /
    '* *})
 
-(defn evaluate [exp]
-  (if (seq? exp)
-    (let [[proc & body] exp]
-      ((primitive-procedures proc)
-         (evaluate (first body)) (evaluate (second body))))
-    exp))
+(def primitive-procs (set (vals lookup)))
 
-(evaluate '(+ 1 1))
+(defn halt [val]
+  (println "HALT!" val)
+  val)
+
+(defn evaluate
+  [exp k]
+  (cond
+    (number? exp) (k exp)
+    ((complement nil?) (primitive-procs exp)) (k exp)
+    ((complement nil?) (lookup exp)) (k (lookup exp))
+    :else (let [[f left right] exp]
+            (evaluate left (fn [l]    ;; push left
+                             (evaluate right
+                                       (fn [r] ;; push right
+                                               (evaluate f (fn [fun] ;; push f
+                                                             (evaluate (fun l r) (fn [v] (k v)))))))))))) ;; push k
+
+(comment
+  (evaluate '1 halt)
+  (evaluate '+ halt)
+  (evaluate '(+ 1 1) halt)
+  (evaluate '(- 1 1) halt)
+  (evaluate '(/ 1 2) halt)
+  (evaluate '(* 2 1) halt)
+
+  (evaluate '(+ (+ 1 2) (+ 1 (+ 1 1))) halt)
+  )
+
