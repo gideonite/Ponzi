@@ -3,11 +3,11 @@
 
 (def clojure-apply apply)
 
-(def ^:dynamic *the-store* (atom {}))
-
 (def ^:dynamic *debug* false)
 
 (defmacro log [& xs] `(when *debug* (println ~@xs)))
+
+(def ^:dynamic *the-store* (atom {}))
 
 (defn new-env [] '())
 
