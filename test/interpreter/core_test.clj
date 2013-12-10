@@ -5,7 +5,7 @@
 (defn eval-in-freshenv
   [exp]
   (let [[env store] (fresh-env)]
-    (scheme-eval exp env store)))
+    (scheme-eval exp env store halt)))
 
 (defn eval-in-freshenv-val
   [exp]
@@ -72,7 +72,7 @@
   (testing "Define a lambda macro"
            (is (let [env (second (eval-in-freshenv '(define (id x) x)))]
                  (= 42 (first (scheme-apply [(lookup-variable-value 'id env *the-store*) env]
-                                            '((42)) env *the-store*)))))))
+                                            '((42)) env *the-store* halt)))))))
 
 (deftest setBANG
   (testing "Fails when the variable doesn't exist."

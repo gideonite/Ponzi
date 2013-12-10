@@ -105,7 +105,7 @@
 (declare eval-sequence)
 
 (defn scheme-apply
-  [procedure arguments env store]
+  [procedure arguments env store k]
   (let [proc (getval procedure)
         args (map getval arguments)]
 
@@ -119,7 +119,7 @@
             (eval-sequence (:body proc)
                            (extend-environment (:env proc)
                                                (make-frame (map vector (:parameters proc) args) store))
-                           store)
+                           store k)
             :else (throw (IllegalArgumentException.
                           (str "Undefined procedure: <" procedure "> on arguments: " (seq arguments)))))))
 
@@ -171,26 +171,26 @@
 (defn eval-all
   "Evaluates each expression in exps in the environment env. Literally maps
   scheme-eval over exps."
-  [exps env store]
-  (map #(scheme-eval % env store) exps))
+  [exps env store k]
+  (map #(scheme-eval % env store k) exps))
 
 (defn eval-sequence
   "Evaluates each expressions in exps in the environment env. Returns the
   value of the last expression."
-  [exps env store]
+  [exps env store k]
   (loop [exps exps
          env env]
-    (let [[value env] (scheme-eval (first exps) env store)]
+    (let [[value env] (scheme-eval (first exps) env store k)]
       (if (seq (rest exps))
         (recur (rest exps) env)
         [value env]))))
 
 (defn eval-if
-  [exp env store]
-  (log "eval-if" (scheme-eval (nth exp 1) env store))
-  (let [[v env] (scheme-eval (nth exp 1) env store)]
-    (or (and v (scheme-eval (nth exp 2) env store))
-        (scheme-eval (nth exp 3) env store))))
+  [exp env store k]
+  (log "eval-if" (scheme-eval (nth exp 1) env store k))
+  (let [[v env] (scheme-eval (nth exp 1) env store k)]
+    (or (and v (scheme-eval (nth exp 2) env store k))
+        (scheme-eval (nth exp 3) env store k))))
 
 (defn cond->if
   [pairs]
@@ -199,9 +199,15 @@
        ~(cond->if (rest pairs)))
     nil))
 
+(defn halt
+  "A slight variation on the identity function which prints 'HALT!' to stdout."
+  [val]
+  (println "HALT!" val)
+  val)
+
 (defn scheme-eval
   "exp env store -> [value env]."
-  [exp env store]
+  [exp env store k]
   (log "eval" exp)
   (match [exp]
          [(_ :guard primitive-value?)] [exp env]
@@ -209,17 +215,18 @@
          [(['quote & e] :seq)] [(first e) env]
          [(['lambda & e] :seq)] (let [parameters (first e) body (rest e)]
                                   [(make-procedure parameters body env) env])
-         [(['if & e] :seq)] (eval-if exp env store)
-         [(['define (sym :guard (complement seq?)) v] :seq)] (eval-definition sym (scheme-eval v env store) store)
-         [(['set! sym v] :seq)] (eval-assignment sym (scheme-eval v env store) store)
-         [(['define (_ :guard seq?) & r] :seq)] (scheme-eval (definefun->lambda exp) env store)
-         [(['let ( _ :guard seq?) & r] :seq)] (scheme-eval (let->lambda exp) env store)
-         [(['begin & e] :seq)] (eval-sequence e env store)
-         [(['cond & e] :seq)] (scheme-eval (cond->if e) env store)
-         :else (scheme-apply (scheme-eval  (first exp) env store)
-                             (eval-all     (rest exp) env store)
+         [(['if & e] :seq)] (eval-if exp env store k)
+         [(['define (sym :guard (complement seq?)) v] :seq)] (eval-definition sym (scheme-eval v env store k) store)
+         [(['set! sym v] :seq)] (eval-assignment sym (scheme-eval v env store k) store)
+         [(['define (_ :guard seq?) & r] :seq)] (scheme-eval (definefun->lambda exp) env store k)
+         [(['let ( _ :guard seq?) & r] :seq)] (scheme-eval (let->lambda exp) env store k)
+         [(['begin & e] :seq)] (eval-sequence e env store k)
+         [(['cond & e] :seq)] (scheme-eval (cond->if e) env store k)
+         :else (scheme-apply (scheme-eval  (first exp) env store k)
+                             (eval-all     (rest exp) env store k)
                              env
-                             store)))
+                             store
+                             k)))
 
 (defn repl [[res env]]
   (println res)
