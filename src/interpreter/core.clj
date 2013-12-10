@@ -214,7 +214,7 @@
   (match [exp]
          [(_ :guard #(or (number? %) (string? %) (false? %) (true? %)))] (k exp env store)
          [(_ :guard symbol?)] (k (lookup-variable-value exp env store) env store)
-         [(['quote & e] :seq)] [(k (first e)) env]
+         [(['quote & e] :seq)] (k (first e) env store)
          ;[(['lambda & e] :seq)] (let [parameters (first e) body (rest e)]
          ;                         [(k (make-procedure parameters body env)) env])
          ;[(['if & e] :seq)] (eval-if e env store k)

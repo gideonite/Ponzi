@@ -23,11 +23,10 @@
   (testing "equals"
            (is (eval-in-freshenv '(= 42 42)))))
 
-;
-;(deftest quote
-;  (testing (is (= 'exp (eval-in-freshenv-val '(quote exp)))))
-;  (testing (is (= '(foo x y z) (eval-in-freshenv-val '(quote (foo x y z)))))))
-;
+(deftest quote
+  (testing (is (= 'exp (eval-in-freshenv '(quote exp)))))
+  (testing (is (= '(foo x y z) (eval-in-freshenv '(quote (foo x y z)))))))
+
 ;(deftest lambda
 ;  (testing "eval identity function"
 ;    (let [l (eval-in-freshenv-val '(lambda (x) x))]
