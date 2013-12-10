@@ -7,11 +7,6 @@
   (let [[env store] (fresh-env)]
     (scheme-eval exp env store halt)))
 
-;; TODO remove?
-(defn eval-in-freshenv-val
-  [exp]
-  (getval (eval-in-freshenv exp)))
-
 (deftest constants
   (testing "numbers"
            (is (= 42 (eval-in-freshenv 42))))
@@ -20,11 +15,13 @@
   (testing "primitive symbols"
            (is (= + (eval-in-freshenv '+)))))
 
-#_(deftest arithmetic
+(deftest arithmetic
   (testing "plus"
-           (is (= 2 (eval-in-freshenv-val '(+ 1 1)))))
+           (is (= 2 (eval-in-freshenv '(+ 1 1)))))
+  #_(testing "sum"  ;; TODO !!
+           (is (= 3 (eval-in-freshenv '(+ 1 1 1)))))
   (testing "equals"
-           (is (eval-in-freshenv-val '(= 42 42)))))
+           (is (eval-in-freshenv '(= 42 42)))))
 
 ;
 ;(deftest quote

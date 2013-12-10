@@ -214,7 +214,7 @@
   (match [exp]
          [(_ :guard #(or (number? %) (string? %) (false? %) (true? %)))] (k exp env store)
          [(_ :guard symbol?)] (k (lookup-variable-value exp env store) env store)
-         ;[(['quote & e] :seq)] [(k (first e)) env]
+         [(['quote & e] :seq)] [(k (first e)) env]
          ;[(['lambda & e] :seq)] (let [parameters (first e) body (rest e)]
          ;                         [(k (make-procedure parameters body env)) env])
          ;[(['if & e] :seq)] (eval-if e env store k)
@@ -225,13 +225,13 @@
          ;[(['begin & e] :seq)] (eval-sequence e env store k)
          ;[(['cond & e] :seq)] (scheme-eval (cond->if e) env store k)
 
-         ;[([( f :guard primitive?) & r] :seq)] (scheme-eval (first r) env store
-         ;                                                   (fn [left]
-         ;                                                     (scheme-eval (second r) env store
-         ;                                                                  (fn [right]
-         ;                                                                    (scheme-eval f env store
-         ;                                                                                 (fn [f]
-         ;                                                                                   (scheme-eval (f left right) env store (fn [v] (k v)))))))))
+         [([( f :guard primitive?) & r] :seq)] (scheme-eval (first r) env store
+                                                            (fn [left env store]
+                                                              (scheme-eval (second r) env store
+                                                                           (fn [right env store]
+                                                                             (scheme-eval f env store
+                                                                                          (fn [f env store]
+                                                                                            (scheme-eval (f left right) env store (fn [v env store] (k v env store)))))))))
 
          ;[([( f :guard #(% :procedure)) & r] :seq)] (println "procedure" f r)
          ;:else (scheme-apply (scheme-eval  (first exp) env store k)
