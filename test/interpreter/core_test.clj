@@ -27,15 +27,15 @@
   (testing (is (= 'exp (eval-in-freshenv '(quote exp)))))
   (testing (is (= '(foo x y z) (eval-in-freshenv '(quote (foo x y z)))))))
 
-;(deftest lambda
-;  (testing "eval identity function"
-;    (let [l (eval-in-freshenv-val '(lambda (x) x))]
-;      (is (= '(x) (:body l)))
-;      (is (= '(x) (:parameters l)))))
-;  (testing "eval sum function"
-;    (let [l (eval-in-freshenv-val '(lambda (x y) (+ x y)))]
-;      (is (= '((+ x y)) (:body l)))
-;      (is (= '(x y) (:parameters l))))))
+(deftest lambda
+  (testing "eval identity function"
+    (let [l (eval-in-freshenv '(lambda (x) x))]
+      (is (= '(x) (:body l)))
+      (is (= '(x) (:parameters l)))))
+  (testing "eval sum function"
+    (let [l (eval-in-freshenv-val '(lambda (x y) (+ x y)))]
+      (is (= '((+ x y)) (:body l)))
+      (is (= '(x y) (:parameters l))))))
 
 #_(deftest if-statement
   (testing "true predicate"

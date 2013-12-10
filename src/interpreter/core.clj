@@ -85,11 +85,13 @@
 (defn make-procedure
   "Returns the datum representing procedure.
   Has a field :procedure which is set to true"
-  [parameters body env]
+  [parameters body env store k]
   {:procedure true
-   :parameters parameters
-   :body body
-   :env env})
+   :k (fn [args env store k]
+        (scheme-eval body
+                     (extend-environment
+                       (make-frame (partition 2 (interleave parameters args)) store))
+                     store k))})
 
 (declare eval-sequence)
 
@@ -215,8 +217,8 @@
          [(_ :guard #(or (number? %) (string? %) (false? %) (true? %)))] (k exp env store)
          [(_ :guard symbol?)] (k (lookup-variable-value exp env store) env store)
          [(['quote & e] :seq)] (k (first e) env store)
-         ;[(['lambda & e] :seq)] (let [parameters (first e) body (rest e)]
-         ;                         [(k (make-procedure parameters body env)) env])
+         [(['lambda & e] :seq)] (let [parameters (first e) body (rest e)]
+                                  (k (make-procedure parameters body env store k) env store))
          ;[(['if & e] :seq)] (eval-if e env store k)
          ;[(['define (sym :guard (complement seq?)) v] :seq)] (eval-definition sym (scheme-eval v env store k) store)
          ;[(['set! sym v] :seq)] (eval-assignment sym (scheme-eval v env store k) store)
