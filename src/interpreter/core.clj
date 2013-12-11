@@ -3,7 +3,7 @@
 
 (def clojure-apply apply)
 
-(def ^:dynamic *debug* true)
+(def ^:dynamic *debug* false)
 
 (defmacro log [& xs] `(when *debug* (println ~@xs)))
 
@@ -194,7 +194,7 @@
 
 (defn halt
   "A slight variation on the identity function which prints 'HALT!' to stdout."
-  [val]
+  [val env store]
   (println "HALT!" val)
   val)
 
@@ -212,19 +212,28 @@
 
 (defn eval-all
   [exps env store k]
-  (map-cps (fn [exp]
+  (map-cps (fn [[exp env store]]
              (scheme-eval exp env store identity)) exps k))
+
+(defn eval-all
+  [f exps env store k]
+  (if (empty? exps)
+    '()
+    (scheme-eval f env store (fn [f env store]
+                               (scheme-eval (first exps) env store (fn [e env store]
+                                                                     (eval-all f (rest exps) env store (fn [es env store]
+                                                                                                         (k (apply f (cons e es)) env store)))))))))
 
 (defn scheme-eval
   "exp env store k -> [value env]."
   [exp env store k]
   (log "eval" exp)
   (match [exp]
-         [(_ :guard #(or (number? %) (string? %) (false? %) (true? %)))] (k exp)
-         [(_ :guard symbol?)] (k (lookup-variable-value exp env store))
-         [(['quote & e] :seq)] (k (first e))
+         [(_ :guard #(or (number? %) (string? %) (false? %) (true? %)))] [(k exp env store) env store]
+         [(_ :guard symbol?)] [(k (lookup-variable-value exp env store) env store) env store]
+         [(['quote & e] :seq)] [(k (first e) env store) env store]
          [(['lambda & e] :seq)] (let [parameters (first e) body (rest e)]
-                                  (k (make-procedure parameters body env store k)))
+                                  [(k (make-procedure parameters body env store k) env store) env store])
 
          ;[(['if & e] :seq)] (eval-if e env store k)
          ;[(['define (sym :guard (complement seq?)) v] :seq)] (eval-definition sym (scheme-eval v env store k) store)
@@ -234,9 +243,7 @@
          ;[(['begin & e] :seq)] (eval-sequence e env store k)
          ;[(['cond & e] :seq)] (scheme-eval (cond->if e) env store k)
 
-         [([( f :guard primitive?) & exps] :seq)] (k (eval-all exps env store (fn [vs]
-                                                                                (scheme-eval f env store (fn [f]
-                                                                                                           (apply f vs))))))
+         [([( f :guard primitive?) & exps] :seq)] (eval-all f exps env store k)
 
          ;[([( f :guard #(:procedure %)) & r] :seq)]
          ;:else (eval-all exp env store k)
