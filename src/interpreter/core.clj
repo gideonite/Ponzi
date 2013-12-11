@@ -159,11 +159,27 @@
   [exp]
   (rest exp))
 
-(defn eval-all
+#_(defn eval-all
   "Evaluates each expression in exps in the environment env. Literally maps
   scheme-eval over exps."
   [exps env store k]
   (map #(scheme-eval % env store k) exps))
+
+#_(defn eval-all
+  ([exps env store k vs]
+   (log vs)
+   (if (empty? exps)
+     vs
+     (eval-all (rest exps) env store (fn [v env store]
+                                       (scheme-eval (first exps) env store k))))))
+(defn eval-all
+  [f args env store k]
+  (reduce args
+          (fn [curr n])
+          )
+  )
+
+(eval-all '(+ 1 (+ 2 3) 4 5 6) (first (fresh-env)) *the-store* (fn [v env store] (println "HALT!") v))
 
 (defn eval-sequence
   "Evaluates each expressions in exps in the environment env. Returns the
@@ -235,7 +251,8 @@
                                                                                           (fn [f env store]
                                                                                             (scheme-eval (f left right) env store (fn [v env store] (k v env store)))))))))
 
-         ;[([( f :guard #(% :procedure)) & r] :seq)] (println "procedure" f r)
+         ;[([( f :guard #(:procedure %)) & r] :seq)] (eval-all (or (:k (first exp)) exp) env store k)
+         :else (eval-all exp env store k)
          ;:else (scheme-apply (scheme-eval  (first exp) env store k)
          ;                    (eval-all     (rest exp) env store k)
          ;                    env store k)

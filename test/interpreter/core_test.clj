@@ -48,28 +48,24 @@
                                                                (= x 12))
                                                       'success 'fail)))))))
 
-;[[[2 ({nil G__24339, + G__24340, * G__24341, - G__24342, print G__24343, / G__24344, < G__24345, cons G__24346, = G__24347, > G__24348, rest G__24349})]
-;({nil G__24339, + G__24340, * G__24341, - G__24342, print G__24343, / G__24344, < G__24345, cons G__24346, = G__24347, > G__24348, rest G__24349})]
-;({nil G__24339, + G__24340, * G__24341, - G__24342, print G__24343, / G__24344, < G__24345, cons G__24346, = G__24347, > G__24348, rest G__24349})]
-
-;(deftest application
-;  (testing "primitive procedure"
-;           (is (= 2 (eval-in-freshenv-val '(+ 1 1)))))
-;  (testing "identity function"
-;           (is (= 42 (eval-in-freshenv-val '((lambda (x) x) 42)))))
-;  (testing "apply sum function"
-;           (is (= 42 (eval-in-freshenv-val '((lambda (x y) (+ x y)) 40 2)))))
-;  (testing "closure"
-;           (is (= 42 (eval-in-freshenv-val '(((lambda (x) (lambda () x)) 42))))))
-;  (testing "Y"
-;           (is (= 120 (eval-in-freshenv-val '(((lambda (f1)
-;                                                       ((lambda (x) (f1 (x x)))
-;                                                          (lambda (x) (f1 (lambda (y) ((x x) y))))))
-;                                                 (lambda (f2)
-;                                                         (lambda (n)
-;                                                                 (if (= n 0)
-;                                                                   1
-;                                                                   (* n (f2 (- n 1))))))) 5))))))
+(deftest application
+  (testing "primitive procedure"
+           (is (= 2 (eval-in-freshenv '(+ 1 1)))))
+  (testing "identity function"
+           (is (= 42 (eval-in-freshenv '((lambda (x) x) 42)))))
+  #_(testing "apply sum function"
+           (is (= 42 (eval-in-freshenv '((lambda (x y) (+ x y)) 40 2)))))
+  #_(testing "closure"
+           (is (= 42 (eval-in-freshenv '(((lambda (x) (lambda () x)) 42))))))
+  #_(testing "Y"
+           (is (= 120 (eval-in-freshenv '(((lambda (f1)
+                                                       ((lambda (x) (f1 (x x)))
+                                                          (lambda (x) (f1 (lambda (y) ((x x) y))))))
+                                                 (lambda (f2)
+                                                         (lambda (n)
+                                                                 (if (= n 0)
+                                                                   1
+                                                                   (* n (f2 (- n 1))))))) 5))))))
 
 ;(deftest define
 ;  (testing "Numerical value" (= 42 (lookup-variable-value 'universe
