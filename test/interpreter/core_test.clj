@@ -17,17 +17,19 @@
 
 (deftest arithmetic
   (testing "plus"
-           (is (= 2 (eval-in-freshenv '(+ 1 1)))))
+           (is (= 1/2 (eval-in-freshenv '(/ 1 2)))))
   #_(testing "sum"  ;; TODO !!
-           (is (= 3 (eval-in-freshenv '(+ 1 1 1)))))
+           (is (= 3 (eval-in-freshenv '(+ 1 2 3)))))
   (testing "equals"
            (is (eval-in-freshenv '(= 42 42)))))
+
+(eval-in-freshenv '(+ 1 2 3))
 
 (deftest quote
   (testing (is (= 'exp (eval-in-freshenv '(quote exp)))))
   (testing (is (= '(foo x y z) (eval-in-freshenv '(quote (foo x y z)))))))
 
-(deftest lambda
+#_(deftest lambda
   (testing "eval identity function"
     (let [l (eval-in-freshenv '(lambda (x) x))]
       (is (= '(x) (:body l)))
@@ -48,7 +50,7 @@
                                                                (= x 12))
                                                       'success 'fail)))))))
 
-(deftest application
+#_(deftest application
   (testing "primitive procedure"
            (is (= 2 (eval-in-freshenv '(+ 1 1)))))
   (testing "identity function"
