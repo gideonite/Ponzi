@@ -33,7 +33,7 @@
       (is (= '(x) (:body l)))
       (is (= '(x) (:parameters l)))))
   (testing "eval sum function"
-    (let [l (eval-in-freshenv-val '(lambda (x y) (+ x y)))]
+    (let [l (eval-in-freshenv '(lambda (x y) (+ x y)))]
       (is (= '((+ x y)) (:body l)))
       (is (= '(x y) (:parameters l))))))
 
@@ -41,9 +41,9 @@
   (testing "true predicate"
            (is (= 'success (eval-in-freshenv '(if (= 42 42) 'success 'fail)))))
   (testing "false predicate"
-           (is (= 'success (eval-in-freshenv-val '(if (= 42 666) 'fail 'success)))))
+           (is (= 'success (eval-in-freshenv '(if (= 42 666) 'fail 'success)))))
   #_(testing "take into account side-effect in predicate."
-           (is (= 'success (eval-in-freshenv-val '(let ( (x 42) )
+           (is (= 'success (eval-in-freshenv '(let ( (x 42) )
                                                     (if (begin (set! x 12)
                                                                (= x 12))
                                                       'success 'fail)))))))

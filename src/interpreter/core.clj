@@ -165,21 +165,21 @@
   [exps env store k]
   (map #(scheme-eval % env store k) exps))
 
-#_(defn eval-all
+(defn eval-all
   ([exps env store k vs]
    (log vs)
    (if (empty? exps)
      vs
      (eval-all (rest exps) env store (fn [v env store]
                                        (scheme-eval (first exps) env store k))))))
-(defn eval-all
+#_(defn eval-all
   [f args env store k]
   (reduce args
           (fn [curr n])
           )
   )
 
-(eval-all '(+ 1 (+ 2 3) 4 5 6) (first (fresh-env)) *the-store* (fn [v env store] (println "HALT!") v))
+#_(eval-all '(+ 1 (+ 2 3) 4 5 6) (first (fresh-env)) *the-store* (fn [v env store] (println "HALT!") v))
 
 (defn eval-sequence
   "Evaluates each expressions in exps in the environment env. Returns the
@@ -230,11 +230,12 @@
   [exp env store k]
   (log "eval" exp)
   (match [exp]
-         [(_ :guard #(or (number? %) (string? %) (false? %) (true? %)))] (k exp env store)
-         [(_ :guard symbol?)] (k (lookup-variable-value exp env store) env store)
-         [(['quote & e] :seq)] (k (first e) env store)
+         [(_ :guard #(or (number? %) (string? %) (false? %) (true? %)))] (k exp)
+         [(_ :guard symbol?)] (k (lookup-variable-value exp env store))
+         [(['quote & e] :seq)] (k (first e))
          [(['lambda & e] :seq)] (let [parameters (first e) body (rest e)]
-                                  (k (make-procedure parameters body env store k) env store))
+                                  (k (make-procedure parameters body env store k)))
+
          ;[(['if & e] :seq)] (eval-if e env store k)
          ;[(['define (sym :guard (complement seq?)) v] :seq)] (eval-definition sym (scheme-eval v env store k) store)
          ;[(['set! sym v] :seq)] (eval-assignment sym (scheme-eval v env store k) store)
@@ -244,12 +245,12 @@
          ;[(['cond & e] :seq)] (scheme-eval (cond->if e) env store k)
 
          [([( f :guard primitive?) & r] :seq)] (scheme-eval (first r) env store
-                                                            (fn [left env store]
+                                                            (fn [left]
                                                               (scheme-eval (second r) env store
-                                                                           (fn [right env store]
+                                                                           (fn [right]
                                                                              (scheme-eval f env store
-                                                                                          (fn [f env store]
-                                                                                            (scheme-eval (f left right) env store (fn [v env store] (k v env store)))))))))
+                                                                                          (fn [f]
+                                                                                            (scheme-eval (f left right) env store (fn [v] (k v env store)))))))))
 
          ;[([( f :guard #(:procedure %)) & r] :seq)] (eval-all (or (:k (first exp)) exp) env store k)
          :else (eval-all exp env store k)
@@ -257,6 +258,16 @@
          ;                    (eval-all     (rest exp) env store k)
          ;                    env store k)
   ))
+
+(defn eval-all
+  [exps env store k]
+  (if (empty? exps)
+    (k nil)
+    (scheme-eval (first exps) env store
+                 (fn [v]
+                   (cons v (eval-all (rest exps) env store k))))))
+
+(eval-all exps env store (fn [vs] (k (apply f vs))))
 
 (defn repl [[res env]]
   (println res)
