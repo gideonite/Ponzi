@@ -177,14 +177,6 @@
     (or (and v (scheme-eval (nth exp 2) env store k))
         (scheme-eval (nth exp 3) env store k))))
 
-(defn eval-if
-  [exp env store k]
-  (let [[pred x else] exp]
-    (scheme-eval pred env store (fn [pred]
-                                  (or (and pred (scheme-eval x env store k))
-                                      (scheme-eval else env store k))))))
-
-
 (defn cond->if
   [pairs]
   (if-let [pair (first pairs)]
@@ -219,7 +211,6 @@
   "Evaluates a list of expressions, returning the value of the last expression.
   Think of a begin expression."
   [exps env store k]
-  (log "eval-sequence" "\t" "\t" "\t" (count @store))
   (match [exps]
          [([x] :seq)] (scheme-eval x env store (fn [v env store] (k v env store)))
          [([x & xs] :seq)] (scheme-eval x env store
@@ -245,8 +236,11 @@
          [(['quote & e] :seq)] (k (first e) env store)
          [(['lambda & e] :seq)] (let [parameters (first e) body (rest e)]
                                   (k (make-procedure parameters body env) env store))
+         [(['if pred x else] :seq)] (scheme-eval pred env store (fn [pred env store]
+                                                                  (if pred
+                                                                    (scheme-eval x env store (fn [v env store] (k v env store)))
+                                                                    (scheme-eval else env store (fn [v env store] (k v env store))))))
 
-         ;[(['if & e] :seq)] (eval-if e env store k)
          ;[(['define (sym :guard (complement seq?)) v] :seq)] (eval-definition sym (scheme-eval v env store k) store)
          ;[(['set! sym v] :seq)] (eval-assignment sym (scheme-eval v env store k) store)
          ;[(['define (_ :guard seq?) & r] :seq)] (scheme-eval (definefun->lambda exp) env store k)
@@ -256,7 +250,7 @@
 
          [([( f :guard primitive?) & exps] :seq)] (scheme-eval f env store
                                                                (fn [f env store] (eval-all exps env store
-                                                                                           (fn [vs env store] (apply f vs)))))
+                                                                                           (fn [vs env store] (k (apply f vs) env store)))))
 
          :else (let [[f & exps] exp]
                  (scheme-eval f env store

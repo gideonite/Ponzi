@@ -31,12 +31,13 @@
       (is (= '((+ x y)) (:body l)))
       (is (= '(x y) (:params l))))))
 
-#_(deftest if-statement
+(deftest if-statement
   (testing "true predicate"
            (is (= 'success (eval-in-freshenv '(if (= 42 42) 'success 'fail)))))
   (testing "false predicate"
            (is (= 'success (eval-in-freshenv '(if (= 42 666) 'fail 'success)))))
   #_(testing "take into account side-effect in predicate."
+             ;; TODO
            (is (= 'success (eval-in-freshenv '(let ( (x 42) )
                                                     (if (begin (set! x 12)
                                                                (= x 12))
@@ -56,7 +57,7 @@
            (is (= 42 (eval-in-freshenv '((lambda (x y) (+ x y)) 40 2)))))
   (testing "closure"
            (is (= 42 (eval-in-freshenv '(((lambda (x) (lambda () x)) 42))))))
-  (testing "Y"
+  #_(testing "Y"
            (is (= 120 (eval-in-freshenv '(((lambda (f1)
                                                        ((lambda (x) (f1 (x x)))
                                                           (lambda (x) (f1 (lambda (y) ((x x) y))))))
