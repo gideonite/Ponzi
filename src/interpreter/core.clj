@@ -204,6 +204,8 @@
   (contains? (set (keys primitive-procedures)) sym))
 
 (defn eval-all
+  "Evaluates all the expressions. Takes a continuation that will do something
+  to a list of expressions."
   [exps env store k]
   (match [exps]
          [([] :seq)] (k '() env store)
@@ -214,8 +216,10 @@
                                                       (k (cons v vs) env store)))))))
 
 (defn eval-sequence
+  "Evaluates a list of expressions, returning the value of the last expression.
+  Think of a begin expression."
   [exps env store k]
-  (log "eval-sequence" exps env)
+  (log "eval-sequence" "\t" "\t" "\t" (count @store))
   (match [exps]
          [([x] :seq)] (scheme-eval x env store (fn [v env store] (k v env store)))
          [([x & xs] :seq)] (scheme-eval x env store
@@ -224,6 +228,9 @@
                                                                         (k vs env store)))))))
 
 (defn apply-proc [{:keys [params body env] :as f} vs store k]
+  "Unwraps a procedure, creates bindings between the parameters and the
+  arguments (thus adding to the store) and then evaluates the body as a begin
+  expression."
   (let [[bindings store] (make-frame (partition 2 (interleave params vs)) store)
         env (extend-environment env bindings)]
     (eval-sequence body env store k)))
@@ -254,7 +261,7 @@
          :else (let [[f & exps] exp]
                  (scheme-eval f env store
                               (fn [f env store] (eval-all exps env store
-                                                          (fn [vs env store] (apply-proc f vs store k))))))
+                                                               (fn [vs env store] (apply-proc f vs store k))))))
   ))
 
 (defn repl [[res env]]
