@@ -155,28 +155,6 @@
     (throw (IllegalArgumentException.
              (str "SET! unbound symbol '" variable "'")))))
 
-(defn begin-expressions
-  [exp]
-  (rest exp))
-
-#_(defn eval-sequence
-  "Evaluates each expressions in exps in the environment env. Returns the
-  value of the last expression."
-  [exps env store k]
-  (loop [exps exps
-         env env]
-    (let [[value env] (scheme-eval (first exps) env store k)]
-      (if (seq (rest exps))
-        (recur (rest exps) env)
-        [value env]))))
-
-#_(defn eval-if
-  [exp env store k]
-  (log "eval-if" (scheme-eval (nth exp 1) env store k))
-  (let [[v env] (scheme-eval (nth exp 1) env store k)]
-    (or (and v (scheme-eval (nth exp 2) env store k))
-        (scheme-eval (nth exp 3) env store k))))
-
 (defn cond->if
   [pairs]
   (if-let [pair (first pairs)]
