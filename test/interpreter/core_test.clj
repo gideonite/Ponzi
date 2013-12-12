@@ -2,6 +2,8 @@
   (:require [clojure.test :refer :all]
             [interpreter.core :refer :all]))
 
+(alter-var-root (var interpreter.core/*debug*) (constantly false))
+
 (defn eval-in-freshenv
   [exp]
   (let [[env store] (fresh-env)]
@@ -15,29 +17,19 @@
   (testing "primitive symbols"
            (is (= + (eval-in-freshenv '+)))))
 
-(deftest arithmetic
-  (testing "plus"
-           (is (= 1/2 (eval-in-freshenv '(/ 1 2)))))
-  #_(testing "sum"  ;; TODO !!
-           (is (= 3 (eval-in-freshenv '(+ 1 2 3)))))
-  (testing "equals"
-           (is (eval-in-freshenv '(= 42 42)))))
-
-(eval-in-freshenv '(+ 1 2 3))
-
 (deftest quote
   (testing (is (= 'exp (eval-in-freshenv '(quote exp)))))
   (testing (is (= '(foo x y z) (eval-in-freshenv '(quote (foo x y z)))))))
 
-#_(deftest lambda
+(deftest function-value
   (testing "eval identity function"
     (let [l (eval-in-freshenv '(lambda (x) x))]
       (is (= '(x) (:body l)))
-      (is (= '(x) (:parameters l)))))
+      (is (= '(x) (:params l)))))
   (testing "eval sum function"
     (let [l (eval-in-freshenv '(lambda (x y) (+ x y)))]
       (is (= '((+ x y)) (:body l)))
-      (is (= '(x y) (:parameters l))))))
+      (is (= '(x y) (:params l))))))
 
 #_(deftest if-statement
   (testing "true predicate"
@@ -50,12 +42,17 @@
                                                                (= x 12))
                                                       'success 'fail)))))))
 
-#_(deftest application
-  (testing "primitive procedure"
-           (is (= 2 (eval-in-freshenv '(+ 1 1)))))
+(deftest application
+  (testing "primitive procedures"
+           (testing "plus"
+                    (is (= 1/2 (eval-in-freshenv '(/ 1 2)))))
+           (testing "sum"  ;; TODO !!
+                    (is (= 6 (eval-in-freshenv '(+ 1 2 3)))))
+           (testing "equals"
+                    (is (eval-in-freshenv '(= 42 42)))))
   (testing "identity function"
            (is (= 42 (eval-in-freshenv '((lambda (x) x) 42)))))
-  #_(testing "apply sum function"
+  (testing "apply sum function"
            (is (= 42 (eval-in-freshenv '((lambda (x y) (+ x y)) 40 2)))))
   #_(testing "closure"
            (is (= 42 (eval-in-freshenv '(((lambda (x) (lambda () x)) 42))))))

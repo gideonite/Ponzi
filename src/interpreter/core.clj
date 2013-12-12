@@ -16,6 +16,7 @@
 (defn getval [[value env]] value)
 
 (defn extend-environment
+  "env frame -> new env."
   [env frame]
   (conj env frame))
 
@@ -33,6 +34,8 @@
     'nil nil
    })
 
+;; TODO s/make-frame/bind-bindings
+
 (defn make-frame
   "[& [variable value]] store -> [frame store].
   Takes a lists of bindings and returns a new frame and a new store."
@@ -45,13 +48,12 @@
         (swap! store assoc addr value)
         (recur (assoc frame variable addr)
                (rest bindings)))
-      frame)))
+      [frame store])))
 
 (defn fresh-env []
   "-> [env store]"
-  [(extend-environment (new-env)
-                       (make-frame primitive-procedures (fresh-store)))
-   *the-store*])
+  (let [[frame store] (make-frame primitive-procedures (fresh-store))]
+  [(extend-environment (new-env) frame) store]))
 
 (declare scheme-eval)
 
@@ -85,13 +87,11 @@
 (defn make-procedure
   "Returns the datum representing procedure.
   Has a field :procedure which is set to true"
-  [parameters body env store k]
-  {:procedure true
-   :k (fn [args env store k]
-        (scheme-eval body
-                     (extend-environment
-                       (make-frame (partition 2 (interleave parameters args)) store))
-                     store k))})
+  [parameters body env]
+  {:proc true
+   :params parameters
+   :body body
+   :env env})
 
 (declare eval-sequence)
 
@@ -205,16 +205,21 @@
 
 (defn eval-all
   [exps env store k]
-  (match [exps]
-         [(_ :guard empty?)] (k '() env store)
+  (match [exps] [(_ :guard empty?)] (k '() env store)
          [([x & xs] :seq)] (scheme-eval x env store
                                         (fn [v env store]
                                           (eval-all xs env store
                                                     (fn [vs env store]
                                                       (k (cons v vs) env store)))))))
 
+(defn apply-proc [{:keys [params body env] :as f} vs store k]
+  (let [[bindings store] (make-frame (partition 2 (interleave params vs)) store)
+        env (extend-environment env bindings)]
+    (log "APPLY-PROC" body)
+    (scheme-eval body env store (fn [v env store] (k v env store)))))
+
 (defn scheme-eval
-  "exp env store k -> [value env]."
+  "exp env store k -> value."
   [exp env store k]
   (log "eval" exp)
   (match [exp]
@@ -222,7 +227,7 @@
          [(_ :guard symbol?)] (k (lookup-variable-value exp env store) env store)
          [(['quote & e] :seq)] (k (first e) env store)
          [(['lambda & e] :seq)] (let [parameters (first e) body (rest e)]
-                                  (k (make-procedure parameters body env store k) env store))
+                                  (k (make-procedure parameters body env) env store))
 
          ;[(['if & e] :seq)] (eval-if e env store k)
          ;[(['define (sym :guard (complement seq?)) v] :seq)] (eval-definition sym (scheme-eval v env store k) store)
@@ -235,8 +240,11 @@
          [([( f :guard primitive?) & exps] :seq)] (scheme-eval f env store
                                                                (fn [f env store] (eval-all exps env store
                                                                                            (fn [vs env store] (apply f vs)))))
+         :else (let [[f & exps] exp]
+                 (scheme-eval f env store
+                              (fn [f env store] (eval-all exps env store
+                                                          (fn [vs env store] (apply-proc f vs store k))))))
 
-         ;[([( f :guard #(:procedure %)) & r] :seq)]
          ;:else (eval-all exp env store k)
          ;:else (scheme-apply (scheme-eval  (first exp) env store k)
          ;                    (eval-all     (rest exp) env store k)
