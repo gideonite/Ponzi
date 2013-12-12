@@ -95,7 +95,7 @@
 
 (declare eval-sequence)
 
-(defn scheme-apply
+#_(defn scheme-apply
   [procedure arguments env store k]
   (let [proc (getval procedure)
         args (map getval arguments)]
@@ -159,7 +159,7 @@
   [exp]
   (rest exp))
 
-(defn eval-sequence
+#_(defn eval-sequence
   "Evaluates each expressions in exps in the environment env. Returns the
   value of the last expression."
   [exps env store k]
@@ -205,18 +205,28 @@
 
 (defn eval-all
   [exps env store k]
-  (match [exps] [(_ :guard empty?)] (k '() env store)
+  (match [exps]
+         [([] :seq)] (k '() env store)
          [([x & xs] :seq)] (scheme-eval x env store
                                         (fn [v env store]
                                           (eval-all xs env store
                                                     (fn [vs env store]
                                                       (k (cons v vs) env store)))))))
 
+(defn eval-sequence
+  [exps env store k]
+  (log "eval-sequence" exps env)
+  (match [exps]
+         [([x] :seq)] (scheme-eval x env store (fn [v env store] (k v env store)))
+         [([x & xs] :seq)] (scheme-eval x env store
+                                        (fn [v env store]
+                                          (eval-sequence xs env store (fn [vs env store]
+                                                                        (k vs env store)))))))
+
 (defn apply-proc [{:keys [params body env] :as f} vs store k]
   (let [[bindings store] (make-frame (partition 2 (interleave params vs)) store)
         env (extend-environment env bindings)]
-    (log "APPLY-PROC" body)
-    (scheme-eval body env store (fn [v env store] (k v env store)))))
+    (eval-sequence body env store k)))
 
 (defn scheme-eval
   "exp env store k -> value."
@@ -240,15 +250,11 @@
          [([( f :guard primitive?) & exps] :seq)] (scheme-eval f env store
                                                                (fn [f env store] (eval-all exps env store
                                                                                            (fn [vs env store] (apply f vs)))))
+
          :else (let [[f & exps] exp]
                  (scheme-eval f env store
                               (fn [f env store] (eval-all exps env store
                                                           (fn [vs env store] (apply-proc f vs store k))))))
-
-         ;:else (eval-all exp env store k)
-         ;:else (scheme-apply (scheme-eval  (first exp) env store k)
-         ;                    (eval-all     (rest exp) env store k)
-         ;                    env store k)
   ))
 
 (defn repl [[res env]]

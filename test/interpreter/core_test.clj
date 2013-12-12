@@ -54,7 +54,7 @@
            (is (= 42 (eval-in-freshenv '((lambda (x) x) 42)))))
   (testing "apply sum function"
            (is (= 42 (eval-in-freshenv '((lambda (x y) (+ x y)) 40 2)))))
-  #_(testing "closure"
+  (testing "closure"
            (is (= 42 (eval-in-freshenv '(((lambda (x) (lambda () x)) 42))))))
   #_(testing "Y"
            (is (= 120 (eval-in-freshenv '(((lambda (f1)
