@@ -47,7 +47,7 @@
   (testing "primitive procedures"
            (testing "plus"
                     (is (= 1/2 (eval-in-freshenv '(/ 1 2)))))
-           (testing "sum"  ;; TODO !!
+           (testing "sum"
                     (is (= 6 (eval-in-freshenv '(+ 1 2 3)))))
            (testing "equals"
                     (is (eval-in-freshenv '(= 42 42)))))
@@ -55,17 +55,40 @@
            (is (= 42 (eval-in-freshenv '((lambda (x) x) 42)))))
   (testing "apply sum function"
            (is (= 42 (eval-in-freshenv '((lambda (x y) (+ x y)) 40 2)))))
-  (testing "closure"
-           (is (= 42 (eval-in-freshenv '(((lambda (x) (lambda () x)) 42))))))
-  #_(testing "Y"
+  (testing "closure" (is (= 42 (eval-in-freshenv '(((lambda (x) (lambda () x)) 42)))))
+           (is (= 42 (eval-in-freshenv '((((lambda (x) (lambda () (lambda () x))) 42)))))))
+  (testing "multiple sexps in body returns value of last sexp"
+           (is (= 84 (eval-in-freshenv '((lambda (x) (* x x) (+ x x)) 42)))))
+  (testing "evaluate a local function"
+           (is (= 42 (eval-in-freshenv '((lambda () ((lambda (x) x) 42)))))))
+  (testing "function as arguments"
+           (is (= 84 (eval-in-freshenv '((lambda (f)
+                                                 (f 42)) (lambda (x) (+ x x)))))))
+  (testing "variable bindings don't bleed out of their proper scope"
+           (is (try (eval-in-freshenv '( (lambda () ((lambda (x) x) 42) x)))
+                 (catch Exception e ;; TODO Gotta catch 'em all? Make a better exception.
+                   true))))
+  (testing "Anonymous recursion factorial"
+           (is (= 120 (eval-in-freshenv '(((lambda (f)
+                                                   (lambda (n)
+                                                           (if (= n 0)
+                                                             1
+                                                             (* n ((f f) (- n 1))))))
+
+                                             (lambda (f)
+                                                     (lambda (n)
+                                                             (if (= n 0)
+                                                               1
+                                                               (* n ((f f) (- n 1))))))) 5)))))
+  (testing "Y"
            (is (= 120 (eval-in-freshenv '(((lambda (f1)
-                                                       ((lambda (x) (f1 (x x)))
-                                                          (lambda (x) (f1 (lambda (y) ((x x) y))))))
-                                                 (lambda (f2)
-                                                         (lambda (n)
-                                                                 (if (= n 0)
-                                                                   1
-                                                                   (* n (f2 (- n 1))))))) 5))))))
+                                                   ((lambda (x) (f1 (x x)))
+                                                      (lambda (x) (f1 (lambda (y) ((x x) y))))))
+                                             (lambda (f2)
+                                                     (lambda (n)
+                                                             (if (= n 0)
+                                                               1
+                                                               (* n (f2 (- n 1))))))) 5))))))
 
 ;(deftest define
 ;  (testing "Numerical value" (= 42 (lookup-variable-value 'universe

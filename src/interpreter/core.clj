@@ -69,11 +69,12 @@
   Finds the value of the variable in the first frame that contains it.
   Returns nil if no frames contain it."
   [variable env store]
-  (when-let [frame (first (filter #(% variable) env))]
-    (log "found-frame!" frame)
+  (if-let [frame (first (filter #(% variable) env))]
     (let [addr (frame variable)
           value (@store addr)]
-      value)))
+      value)
+    (throw (Exception.    ;; TODO custom exception
+             (str "Undefined variable '" variable "'")))))
 
 (def primitive-procedure?
   (memoize (fn [procedure]
@@ -193,8 +194,8 @@
          [([x] :seq)] (scheme-eval x env store (fn [v env store] (k v env store)))
          [([x & xs] :seq)] (scheme-eval x env store
                                         (fn [v env store]
-                                          (eval-sequence xs env store (fn [vs env store]
-                                                                        (k vs env store)))))))
+                                          (eval-sequence xs env store (fn [last-value env store]
+                                                                        (k last-value env store)))))))
 
 (defn apply-proc [{:keys [params body env] :as f} vs store k]
   "Unwraps a procedure, creates bindings between the parameters and the
@@ -207,7 +208,7 @@
 (defn scheme-eval
   "exp env store k -> value."
   [exp env store k]
-  (log "eval" exp)
+  (log "eval" "#frames:" (count env) "   " "#bindings:" (count @store))
   (match [exp]
          [(_ :guard #(or (number? %) (string? %) (false? %) (true? %)))] (k exp env store)
          [(_ :guard symbol?)] (k (lookup-variable-value exp env store) env store)
@@ -216,8 +217,8 @@
                                   (k (make-procedure parameters body env) env store))
          [(['if pred x else] :seq)] (scheme-eval pred env store (fn [pred env store]
                                                                   (if pred
-                                                                    (scheme-eval x env store (fn [v env store] (k v env store)))
-                                                                    (scheme-eval else env store (fn [v env store] (k v env store))))))
+                                                                    (scheme-eval x env store (fn [x env store] (k x env store)))
+                                                                    (scheme-eval else env store (fn [else env store] (k else env store))))))
 
          ;[(['define (sym :guard (complement seq?)) v] :seq)] (eval-definition sym (scheme-eval v env store k) store)
          ;[(['set! sym v] :seq)] (eval-assignment sym (scheme-eval v env store k) store)
@@ -228,13 +229,15 @@
 
          [([( f :guard primitive?) & exps] :seq)] (scheme-eval f env store
                                                                (fn [f env store] (eval-all exps env store
-                                                                                           (fn [vs env store] (k (apply f vs) env store)))))
+                                                                                           (fn [vs env store]
+                                                                                             (k (apply f vs) env store)))))
 
          :else (let [[f & exps] exp]
                  (scheme-eval f env store
-                              (fn [f env store] (eval-all exps env store
-                                                               (fn [vs env store] (apply-proc f vs store k))))))
-  ))
+                              (fn [f f-env store] (eval-all exps f-env store
+                                                            (fn [vs args-env store] (apply-proc f vs store
+                                                                                                (fn [v final-env store]
+                                                                                                  (k v f-env store))))))))))
 
 (defn repl [[res env]]
   (println res)
