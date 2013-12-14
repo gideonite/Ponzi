@@ -7,4 +7,5 @@ A Clojure file for running a simple Scheme interpreter.  Nothing fancy, mostly m
 
 ## Usage
 
-Run tests with `lein test`.  Get a Scheme repl with `lein run -m interpreter.core`
+Run tests with `lein test`.  Get a Scheme repl with `lein run -m
+interpreter.core`. Run a Scheme file with `lein run -m /path/to/file`.
