@@ -5,16 +5,19 @@
 (alter-var-root (var interpreter.core/*debug*) (constantly false))
 
 (defn eval-in-freshenv
-  [exp]
-  (let [[env store] (fresh-env)]
-    (scheme-eval exp env store halt)))
+  ([exp]
+   (let [[env store] (fresh-env)]
+     (scheme-eval exp env store halt)))
+  ([exp k]
+   (let [[env store] (fresh-env)]
+     (scheme-eval exp env store k))))
 
 (deftest constants
-  (testing "numbers"
+  (testing "Numbers"
            (is (= 42 (eval-in-freshenv 42))))
-  (testing "booleans"
+  (testing "Booleans"
            (is (= false (eval-in-freshenv false))))
-  (testing "primitive symbols"
+  (testing "Primitive symbols"
            (is (= + (eval-in-freshenv '+)))))
 
 (deftest quote
@@ -22,19 +25,19 @@
   (testing (is (= '(foo x y z) (eval-in-freshenv '(quote (foo x y z)))))))
 
 (deftest function-value
-  (testing "eval identity function"
+  (testing "Eval identity function"
     (let [l (eval-in-freshenv '(lambda (x) x))]
       (is (= '(x) (:body l)))
       (is (= '(x) (:params l)))))
-  (testing "eval sum function"
+  (testing "Eval sum function"
     (let [l (eval-in-freshenv '(lambda (x y) (+ x y)))]
       (is (= '((+ x y)) (:body l)))
       (is (= '(x y) (:params l))))))
 
 (deftest if-statement
-  (testing "true predicate"
+  (testing "True predicate"
            (is (= 'success (eval-in-freshenv '(if (= 42 42) 'success 'fail)))))
-  (testing "false predicate"
+  (testing "False predicate"
            (is (= 'success (eval-in-freshenv '(if (= 42 666) 'fail 'success)))))
   #_(testing "take into account side-effect in predicate."
              ;; TODO
@@ -44,27 +47,27 @@
                                                       'success 'fail)))))))
 
 (deftest application
-  (testing "primitive procedures"
+  (testing "Primitive procedures"
            (testing "plus"
                     (is (= 1/2 (eval-in-freshenv '(/ 1 2)))))
            (testing "sum"
                     (is (= 6 (eval-in-freshenv '(+ 1 2 3)))))
            (testing "equals"
                     (is (eval-in-freshenv '(= 42 42)))))
-  (testing "identity function"
+  (testing "Identity function"
            (is (= 42 (eval-in-freshenv '((lambda (x) x) 42)))))
-  (testing "apply sum function"
+  (testing "Apply sum function"
            (is (= 42 (eval-in-freshenv '((lambda (x y) (+ x y)) 40 2)))))
-  (testing "closure" (is (= 42 (eval-in-freshenv '(((lambda (x) (lambda () x)) 42)))))
+  (testing "Closure" (is (= 42 (eval-in-freshenv '(((lambda (x) (lambda () x)) 42)))))
            (is (= 42 (eval-in-freshenv '((((lambda (x) (lambda () (lambda () x))) 42)))))))
-  (testing "multiple sexps in body returns value of last sexp"
+  (testing "Multiple sexps in body returns value of last sexp"
            (is (= 84 (eval-in-freshenv '((lambda (x) (* x x) (+ x x)) 42)))))
-  (testing "evaluate a local function"
+  (testing "Evaluate a local function"
            (is (= 42 (eval-in-freshenv '((lambda () ((lambda (x) x) 42)))))))
-  (testing "function as arguments"
+  (testing "Function as arguments"
            (is (= 84 (eval-in-freshenv '((lambda (f)
                                                  (f 42)) (lambda (x) (+ x x)))))))
-  (testing "variable bindings don't bleed out of their proper scope"
+  (testing "Variable bindings don't bleed out of their proper scope"
            (is (try (eval-in-freshenv '( (lambda () ((lambda (x) x) 42) x)))
                  (catch Exception e ;; TODO Gotta catch 'em all? Make a better exception.
                    true))))
@@ -74,7 +77,6 @@
                                                            (if (= n 0)
                                                              1
                                                              (* n ((f f) (- n 1))))))
-
                                              (lambda (f)
                                                      (lambda (n)
                                                              (if (= n 0)
@@ -90,27 +92,32 @@
                                                                1
                                                                (* n (f2 (- n 1))))))) 5))))))
 
-;(deftest define
-;  (testing "Numerical value" (= 42 (lookup-variable-value 'universe
-;                                                          (second (eval-in-freshenv '(define universe 42)))
-;                                                          *the-store*)))
-;  (testing "Lambda value" (is (:procedure (lookup-variable-value 'id
-;                                                                 (second (eval-in-freshenv '(define id (lambda (x) x))))
-;                                                                 *the-store*))))
-;  (testing "Define a lambda macro"
-;           (is (let [env (second (eval-in-freshenv '(define (id x) x)))]
-;                 (= 42 (first (scheme-apply [(lookup-variable-value 'id env *the-store*) env]
-;                                            '((42)) env *the-store* halt)))))))
-;
-;(deftest setBANG
-;  (testing "Fails when the variable doesn't exist."
-;           (is (try (eval-in-freshenv '(set! universe 42))
-;                 (catch IllegalArgumentException e
-;                   true))))
-;  (testing "Overwrites the value bound to variable."
-;           (is (= 666 (let [env (second (eval-in-freshenv '(define universe 42)))]
-;                        (eval-assignment 'universe [666 env] *the-store*)
-;                        (lookup-variable-value 'universe env *the-store*))))))
+(deftest define
+  (testing "Numerical value"
+           (is (eval-in-freshenv '(define universe 42)
+                                 (fn [v env store] (= 42 (lookup-variable-value 'universe env store))))))
+  (testing "Define within a lambda works"
+           (is (nil? (eval-in-freshenv '((lambda () (define x 42))) (fn [v env store] v)))))
+  (testing "Define within a lambda does the right thing (shadows whatever follows)."
+           (is (= 42 (eval-in-freshenv '((lambda (x) (define x 42) x) 12)))))
+  (testing "Infinite loop can be written. don't try this at home."
+           (eval-in-freshenv '(define f (lambda () f)) (fn [v env store] ((lookup-variable-value 'f env store) :proc))))
+  (testing "But bindings within a lambda don't bleed out."
+           (try (eval-in-freshenv '((lambda () ((lambda (x) (define x 42) x) 12) x)))
+             (catch Exception e true))))
+
+(deftest setBANG
+  (testing "Fails when the variable doesn't exist."
+           (is (try (eval-in-freshenv '(set! universe 42))
+                 (catch IllegalArgumentException e
+                   true))))
+
+  (testing "Overwrites a defined variable."
+           (is (= 12 (eval-in-freshenv '((lambda () (define x 42) (set! x 12) x)))))) 
+
+  (testing "Doesn't blead scope."
+           (is (= 0 (eval-in-freshenv '((lambda (x) (lambda () (define x 42) (set! x 12)) x) 0))))) )
+
 ;
 ;(deftest let-macro
 ;  (testing (is (= 42 (eval-in-freshenv-val '(let ((x 42) (route 66)) x))))))

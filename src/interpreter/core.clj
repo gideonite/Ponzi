@@ -131,29 +131,30 @@
     `((~'lambda ~vars ~body) ~@values)))
 
 (defn eval-definition
-  "Variable value env store -> [nil env].
-
-  Binds the variable to the value in the first frame containing the variable.
-  If no frame contains the variable, adds the binding to the first frame.
   "
-  [variable [value env] store]
+  Creates a new binding in the first frame containing the variable, or creates
+  a new binding in the base environment (first frame), and then does this:
+
+  (k nil new-environment new-store)
+  "
+  [variable value env store k]
   (log "eval-def:" variable ", first frame:" (first (filter #(% variable) env)))
   (if-let [frame (first (filter #(% variable) env))]
     (let [addr (frame variable)]
       (swap! store assoc addr value)
-      [nil env])
-    (let [frame (make-frame [[variable value]] store)
+      (k nil env store))
+    (let [[frame store] (make-frame [[variable value]] store)
           new-frame (merge frame (first env))]
-      [nil (cons new-frame (rest env))])))
+      (k nil (cons new-frame (rest env)) store))))
 
 (defn eval-assignment
-  [variable [value env] store]
+  [variable value env store k]
   (log "assignment!" variable value)
   (if-let [frame (first (filter #(% variable) env))]
     (let [addr (frame variable)]
       (swap! store assoc addr value)
-      [value env])
-    (throw (IllegalArgumentException.
+      (k nil env store))
+    (throw (IllegalArgumentException. ;; TODO custom exception
              (str "SET! unbound symbol '" variable "'")))))
 
 (defn cond->if
@@ -166,7 +167,7 @@
 (defn halt
   "A slight variation on the identity function which prints 'HALT!' to stdout."
   [val env store]
-  (println "HALT!" val)
+  (println "HALT!" val (count env) (count @store))
   val)
 
 ;; TODO: optimize
@@ -215,13 +216,18 @@
          [(['quote & e] :seq)] (k (first e) env store)
          [(['lambda & e] :seq)] (let [parameters (first e) body (rest e)]
                                   (k (make-procedure parameters body env) env store))
+
          [(['if pred x else] :seq)] (scheme-eval pred env store (fn [pred env store]
                                                                   (if pred
                                                                     (scheme-eval x env store (fn [x env store] (k x env store)))
                                                                     (scheme-eval else env store (fn [else env store] (k else env store))))))
 
-         ;[(['define (sym :guard (complement seq?)) v] :seq)] (eval-definition sym (scheme-eval v env store k) store)
-         ;[(['set! sym v] :seq)] (eval-assignment sym (scheme-eval v env store k) store)
+         [(['define (sym :guard (complement seq?)) v] :seq)] (scheme-eval v env store (fn [v env store]
+                                                                                        (eval-definition sym v env store k)))
+
+         [(['set! sym v] :seq)] (scheme-eval v env store (fn [v env store]
+                                                              (eval-assignment sym v env store k)))
+
          ;[(['define (_ :guard seq?) & r] :seq)] (scheme-eval (definefun->lambda exp) env store k)
          ;[(['let ( _ :guard seq?) & r] :seq)] (scheme-eval (let->lambda exp) env store k)
          ;[(['begin & e] :seq)] (eval-sequence e env store k)
