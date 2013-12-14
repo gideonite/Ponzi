@@ -97,11 +97,14 @@
            (is (eval-in-freshenv '(define universe 42)
                                  (fn [v env store] (= 42 (lookup-variable-value 'universe env store))))))
   (testing "Define within a lambda works"
-           (is (nil? (eval-in-freshenv '((lambda () (define x 42))) (fn [v env store] v)))))
-  (testing "Define within a lambda does the right thing (shadows whatever follows)."
+           (is (nil? (eval-in-freshenv '((lambda () (define x 42))) (fn [v env store]
+                                                                      v)))))
+  (testing "Define within a lambda does the right thing (shadows whatever
+           follows)."
            (is (= 42 (eval-in-freshenv '((lambda (x) (define x 42) x) 12)))))
   (testing "Infinite loop can be written. don't try this at home."
-           (eval-in-freshenv '(define f (lambda () f)) (fn [v env store] ((lookup-variable-value 'f env store) :proc))))
+           (eval-in-freshenv '(define f (lambda () f)) (fn [v env store]
+                                                         ((lookup-variable-value 'f env store) :proc))))
   (testing "But bindings within a lambda don't bleed out."
            (try (eval-in-freshenv '((lambda () ((lambda (x) (define x 42) x) 12) x)))
              (catch Exception e true))))
@@ -118,10 +121,21 @@
   (testing "Doesn't blead scope."
            (is (= 0 (eval-in-freshenv '((lambda (x) (lambda () (define x 42) (set! x 12)) x) 0))))) )
 
-;
-;(deftest let-macro
-;  (testing (is (= 42 (eval-in-freshenv-val '(let ((x 42) (route 66)) x))))))
-;
+(deftest let-macro
+  (testing "Lexical scope (scope of point of definition, not of point of
+           execution)"
+           (try
+             (eval-in-freshenv '((lambda ()
+                                         (define retx (lambda () x))
+                                         (let ((x 12))
+                                           (retx)))))
+             (catch Exception e true)))
+  (testing "Closure."
+           (is (= 42 (eval-in-freshenv '((let ((x 42))
+                                         (lambda () x)))))))
+  (testing "Multiple bindings."
+           (is (= 42 (eval-in-freshenv '(let ((x 42) (route 66)) x))))))
+
 ;(deftest begin-exp
 ;  (testing "Returns last expression" (is (= 3 (eval-in-freshenv-val '(begin 1 2 3)))))
 ;  (testing "Define within a begin"

@@ -228,8 +228,9 @@
          [(['set! sym v] :seq)] (scheme-eval v env store (fn [v env store]
                                                               (eval-assignment sym v env store k)))
 
-         ;[(['define (_ :guard seq?) & r] :seq)] (scheme-eval (definefun->lambda exp) env store k)
-         ;[(['let ( _ :guard seq?) & r] :seq)] (scheme-eval (let->lambda exp) env store k)
+         [(['define (_ :guard seq?) & r] :seq)] (scheme-eval (definefun->lambda exp) env store k)
+         [(['let ( _ :guard seq?) & r] :seq)] (scheme-eval (let->lambda exp) env store k)
+
          ;[(['begin & e] :seq)] (eval-sequence e env store k)
          ;[(['cond & e] :seq)] (scheme-eval (cond->if e) env store k)
 
