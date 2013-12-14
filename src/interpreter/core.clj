@@ -188,8 +188,10 @@
                                                       (k (cons v vs) env store)))))))
 
 (defn eval-sequence
-  "Evaluates a list of expressions, returning the value of the last expression.
-  Think of a begin expression."
+  "Evaluates a list of expressions, and then does this:
+  (k last-value env store)
+
+  Think of it as a begin expression."
   [exps env store k]
   (match [exps]
          [([x] :seq)] (scheme-eval x env store (fn [v env store] (k v env store)))
@@ -231,8 +233,8 @@
          [(['define (_ :guard seq?) & r] :seq)] (scheme-eval (definefun->lambda exp) env store k)
          [(['let ( _ :guard seq?) & r] :seq)] (scheme-eval (let->lambda exp) env store k)
 
-         ;[(['begin & e] :seq)] (eval-sequence e env store k)
-         ;[(['cond & e] :seq)] (scheme-eval (cond->if e) env store k)
+         [(['begin & e] :seq)] (eval-sequence e env store k)
+         [(['cond & e] :seq)] (scheme-eval (cond->if e) env store k)
 
          [([( f :guard primitive?) & exps] :seq)] (scheme-eval f env store
                                                                (fn [f env store] (eval-all exps env store

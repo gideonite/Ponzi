@@ -136,13 +136,12 @@
   (testing "Multiple bindings."
            (is (= 42 (eval-in-freshenv '(let ((x 42) (route 66)) x))))))
 
-;(deftest begin-exp
-;  (testing "Returns last expression" (is (= 3 (eval-in-freshenv-val '(begin 1 2 3)))))
-;  (testing "Define within a begin"
-;           (is (= 42 (eval-in-freshenv-val '(begin (define x 42) x))))))
-;
-;(eval-in-freshenv-val '(cond
-;                     [(= 2 3) 'wrong!]
-;                     [(= 2 2) 'ok]))
-;
-;(eval-in-freshenv '(cons "asdf" '()))
+(deftest begin-exp
+  (testing "Returns last expression" (is (= 3 (eval-in-freshenv '(begin 1 2 3)))))
+  (testing "Define within a begin"
+           (is (= 1 (eval-in-freshenv '(begin (define x 42) (set! x 1) x))))))
+
+(deftest cond_
+  (testing "Basic." (= 'ok (eval-in-freshenv '(cond
+                                                [(= 2 3) 'wrong!]
+                                                [(= 2 2) 'ok])))))
