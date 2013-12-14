@@ -3,7 +3,7 @@
 
 (def clojure-apply apply)
 
-(def ^:dynamic *debug* true)
+(def ^:dynamic *debug* false)
 
 (defmacro log [& xs] `(when *debug* (println ~@xs)))
 
@@ -183,7 +183,7 @@
 (defn scheme-eval
   "exp env store k -> value."
   [exp env store k]
-  (log "eval" "#frames:" (count env) "   " "#bindings:" (count @store))
+  (log "eval" "#frames:" (count env) "   " "#bindings:" (count store))
   (match [exp]
          [(_ :guard #(or (number? %) (string? %) (false? %) (true? %)))] (k exp env store)
          [(_ :guard symbol?)] (k (lookup-variable-value exp env store) env store)
@@ -220,20 +220,16 @@
                                                                                                 (fn [v final-env store]
                                                                                                   (k v f-env store))))))))))
 
-#_(defn repl [[res env]]
-  (println res)
+(defn repl [v env store]
+  (println v)
   (print "=>  ")
   (flush)
-  (recur (scheme-eval (read-string (read-line)) env *the-store*)))
+  (scheme-eval (read-string (read-line)) env store (fn [v env store] (repl v env store))))
 
-#_(defn -main
-  [& args]
-
-  (set! *print-level* 4)
-
+(defn -main [& args]
   (let [[env store] (fresh-env)]
     (if (seq? args)
       (doseq [filename args]
         (doseq [form (read-string (slurp filename))]
           (scheme-eval form env store)))
-      (repl (scheme-eval '(cons "ponzi-scheme" '()) env store)))))
+      (repl "Welcome to Ponzi" env store))))
