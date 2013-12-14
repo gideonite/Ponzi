@@ -7,11 +7,9 @@
 
 (defmacro log [& xs] `(when *debug* (println ~@xs)))
 
-(def ^:dynamic *the-store* (atom {}))
-
 (defn new-env [] '())
 
-(defn fresh-store [] (reset! *the-store* {}) *the-store*)
+(defn fresh-store [] {})
 
 (defn getval [[value env]] value)
 
@@ -41,13 +39,14 @@
   Takes a lists of bindings and returns a new frame and a new store."
   [bindings store]
   (loop [frame {}
-         bindings bindings]
+         bindings bindings
+         store store]
     (if (seq bindings)
       (let [[variable value] (first bindings)
             addr (gensym)]
-        (swap! store assoc addr value)
         (recur (assoc frame variable addr)
-               (rest bindings)))
+               (rest bindings)
+               (assoc store addr value)))
       [frame store])))
 
 (defn fresh-env []
@@ -57,12 +56,6 @@
 
 (declare scheme-eval)
 
-(defn add-binding-to-frame!
-  "mutates the frame by either adding a new binding to the variable or
-  replacing the old binding with the value provided."
-  [frame variable value]
-  (swap! frame assoc variable value))
-
 (defn lookup-variable-value
   "Symbol env store -> value (or nil).
 
@@ -71,7 +64,7 @@
   [variable env store]
   (if-let [frame (first (filter #(% variable) env))]
     (let [addr (frame variable)
-          value (@store addr)]
+          value (store addr)]
       value)
     (throw (Exception.    ;; TODO custom exception
              (str "Undefined variable '" variable "'")))))
@@ -95,25 +88,6 @@
    :env env})
 
 (declare eval-sequence)
-
-#_(defn scheme-apply
-  [procedure arguments env store k]
-  (let [proc (getval procedure)
-        args (map getval arguments)]
-
-    (log "apply, proc:"  proc)
-    (log "primtive-procedure?" (primitive-procedure? proc))
-    (log "compound-procedure?" (compound-procedure? proc))
-
-    (cond (primitive-procedure? proc)
-            [(clojure-apply proc args) env]
-          (compound-procedure? proc)
-            (eval-sequence (:body proc)
-                           (extend-environment (:env proc)
-                                               (make-frame (map vector (:parameters proc) args) store))
-                           store k)
-            :else (throw (IllegalArgumentException.
-                          (str "Undefined procedure: <" procedure "> on arguments: " (seq arguments)))))))
 
 (defn definefun->lambda
   "(define (fun p q) <body>) -> (define fun (lambda p q) <body>)"
@@ -141,8 +115,7 @@
   (log "eval-def:" variable ", first frame:" (first (filter #(% variable) env)))
   (if-let [frame (first (filter #(% variable) env))]
     (let [addr (frame variable)]
-      (swap! store assoc addr value)
-      (k nil env store))
+      (k nil env (assoc store addr value)))
     (let [[frame store] (make-frame [[variable value]] store)
           new-frame (merge frame (first env))]
       (k nil (cons new-frame (rest env)) store))))
@@ -152,8 +125,7 @@
   (log "assignment!" variable value)
   (if-let [frame (first (filter #(% variable) env))]
     (let [addr (frame variable)]
-      (swap! store assoc addr value)
-      (k nil env store))
+      (k nil env (assoc store addr value)))
     (throw (IllegalArgumentException. ;; TODO custom exception
              (str "SET! unbound symbol '" variable "'")))))
 
@@ -167,7 +139,7 @@
 (defn halt
   "A slight variation on the identity function which prints 'HALT!' to stdout."
   [val env store]
-  (println "HALT!" val (count env) (count @store))
+  (println "HALT!" val (count env) (count store))
   val)
 
 ;; TODO: optimize
@@ -248,13 +220,13 @@
                                                                                                 (fn [v final-env store]
                                                                                                   (k v f-env store))))))))))
 
-(defn repl [[res env]]
+#_(defn repl [[res env]]
   (println res)
   (print "=>  ")
   (flush)
   (recur (scheme-eval (read-string (read-line)) env *the-store*)))
 
-(defn -main
+#_(defn -main
   [& args]
 
   (set! *print-level* 4)
