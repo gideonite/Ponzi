@@ -39,8 +39,7 @@
            (is (= 'success (eval-in-freshenv '(if (= 42 42) 'success 'fail)))))
   (testing "False predicate"
            (is (= 'success (eval-in-freshenv '(if (= 42 666) 'fail 'success)))))
-  #_(testing "take into account side-effect in predicate."
-             ;; TODO
+  (testing "take into account side-effect in predicate."
            (is (= 'success (eval-in-freshenv '(let ( (x 42) )
                                                     (if (begin (set! x 12)
                                                                (= x 12))
@@ -75,8 +74,7 @@
            (is (= 120 (eval-in-freshenv '(((lambda (f)
                                                    (lambda (n)
                                                            (if (= n 0)
-                                                             1
-                                                             (* n ((f f) (- n 1))))))
+                                                             1 (* n ((f f) (- n 1))))))
                                              (lambda (f)
                                                      (lambda (n)
                                                              (if (= n 0)
