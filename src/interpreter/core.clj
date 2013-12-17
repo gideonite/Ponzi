@@ -32,8 +32,6 @@
     'nil nil
    })
 
-;; TODO s/make-frame/bind-bindings
-
 (defn make-frame
   "[& [variable value]] store -> [frame store].
   Takes a lists of bindings and returns a new frame and a new store."
@@ -66,7 +64,7 @@
     (let [addr (frame variable)
           value (store addr)]
       value)
-    (throw (Exception.    ;; TODO custom exception
+    (throw (Exception.
              (str "Undefined variable '" variable "'")))))
 
 (def primitive-procedure?
@@ -126,7 +124,7 @@
   (if-let [frame (first (filter #(% variable) env))]
     (let [addr (frame variable)]
       (k nil env (assoc store addr value)))
-    (throw (IllegalArgumentException. ;; TODO custom exception
+    (throw (IllegalArgumentException.
              (str "SET! unbound symbol '" variable "'")))))
 
 (defn cond->if
@@ -142,7 +140,7 @@
   (println "HALT!" val (count env) (count store))
   val)
 
-;; TODO: optimize
+;; TODO: optimize this!
 (defn primitive?
   [sym]
   (contains? (set (keys primitive-procedures)) sym))
