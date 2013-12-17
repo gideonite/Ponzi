@@ -47,3 +47,8 @@ Clojure doesn't encourage using mutable data structures, so I started thinking
 about how to implement `set!` without `set!`. Many conversations with Hacker
 Schoolers led me to Store-Passing-Style and Continuation-Passing-Style which is
 what is implemented here.
+
+### Ponzi, the name
+
+Best name ever for a Scheme interpreter. It was [Alan
+O'Donnell](https://github.com/happy4crazy)'s idea.
