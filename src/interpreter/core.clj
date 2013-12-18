@@ -222,16 +222,15 @@
   (println v)
   (print "=>  ")
   (flush)
-
   (let [exp (try (read-string (read-line))
               (catch RuntimeException e ""))]
     (scheme-eval exp env store
-                 (fn [v env store] (repl v env store)))))
+                (fn [v env store] (repl v env store)))))
 
 (defn -main [& args]
   (let [[env store] (fresh-env)]
     (if (seq? args)
       (doseq [filename args]
-        (doseq [form (read-string (slurp filename))]
-          (scheme-eval form env store)))
+        (doseq [form (read-string (str \( (slurp filename) \)))]
+          (scheme-eval form env store (fn [v env store] v))))
       (repl "Welcome to Ponzi" env store))))
