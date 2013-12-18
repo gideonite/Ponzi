@@ -149,13 +149,14 @@
   "Evaluates all the expressions. Takes a continuation that will do something
   to a list of expressions."
   [exps env store k]
-  (match [exps]
-         [([] :seq)] (k '() env store)
-         [([x & xs] :seq)] (scheme-eval x env store
-                                        (fn [v env store]
-                                          (eval-all xs env store
-                                                    (fn [vs env store]
-                                                      (k (cons v vs) env store)))))))
+  (fn []
+    (match [exps]
+           [([] :seq)] (k '() env store)
+           [([x & xs] :seq)] (scheme-eval x env store
+                                          (fn [v env store]
+                                            (eval-all xs env store
+                                                      (fn [vs env store]
+                                                        (k (cons v vs) env store))))))))
 
 (defn eval-sequence
   "Evaluates a list of expressions, and then does this:
@@ -163,12 +164,13 @@
 
   Think of it as a begin expression."
   [exps env store k]
-  (match [exps]
-         [([x] :seq)] (scheme-eval x env store (fn [v env store] (k v env store)))
-         [([x & xs] :seq)] (scheme-eval x env store
-                                        (fn [v env store]
-                                          (eval-sequence xs env store (fn [last-value env store]
-                                                                        (k last-value env store)))))))
+  (fn []
+    (match [exps]
+           [([x] :seq)] (scheme-eval x env store (fn [v env store] (k v env store)))
+           [([x & xs] :seq)] (scheme-eval x env store
+                                          (fn [v env store]
+                                            (eval-sequence xs env store (fn [last-value env store]
+                                                                          (k last-value env store))))))))
 
 (defn apply-proc [{:keys [params body env] :as f} vs store k]
   "Unwraps a procedure, creates bindings between the parameters and the
@@ -178,7 +180,7 @@
         env (extend-environment env bindings)]
     (eval-sequence body env store k)))
 
-(defn scheme-eval
+(defn tramp-scheme-eval
   "exp env store k -> value."
   [exp env store k]
   (log "eval" "#frames:" (count env) "   " "#bindings:" (count store))
@@ -189,34 +191,37 @@
          [(['lambda & e] :seq)] (let [parameters (first e) body (rest e)]
                                   (k (make-procedure parameters body env) env store))
 
-         [(['if pred x else] :seq)] (scheme-eval pred env store (fn [pred env store]
+         [(['if pred x else] :seq)] (tramp-scheme-eval pred env store (fn [pred env store]
                                                                   (if pred
-                                                                    (scheme-eval x env store (fn [x env store] (k x env store)))
-                                                                    (scheme-eval else env store (fn [else env store] (k else env store))))))
+                                                                    (tramp-scheme-eval x env store (fn [x env store] (k x env store)))
+                                                                    (tramp-scheme-eval else env store (fn [else env store] (k else env store))))))
 
-         [(['define (sym :guard (complement seq?)) v] :seq)] (scheme-eval v env store (fn [v env store]
+         [(['define (sym :guard (complement seq?)) v] :seq)] (tramp-scheme-eval v env store (fn [v env store]
                                                                                         (eval-definition sym v env store k)))
 
-         [(['set! sym v] :seq)] (scheme-eval v env store (fn [v env store]
+         [(['set! sym v] :seq)] (tramp-scheme-eval v env store (fn [v env store]
                                                               (eval-assignment sym v env store k)))
 
-         [(['define (_ :guard seq?) & r] :seq)] (scheme-eval (definefun->lambda exp) env store k)
-         [(['let ( _ :guard seq?) & r] :seq)] (scheme-eval (let->lambda exp) env store k)
+         [(['define (_ :guard seq?) & r] :seq)] (tramp-scheme-eval (definefun->lambda exp) env store k)
+         [(['let ( _ :guard seq?) & r] :seq)] (tramp-scheme-eval (let->lambda exp) env store k)
 
          [(['begin & e] :seq)] (eval-sequence e env store k)
-         [(['cond & e] :seq)] (scheme-eval (cond->if e) env store k)
+         [(['cond & e] :seq)] (tramp-scheme-eval (cond->if e) env store k)
 
-         [([( f :guard primitive?) & exps] :seq)] (scheme-eval f env store
+         [([( f :guard primitive?) & exps] :seq)] (tramp-scheme-eval f env store
                                                                (fn [f env store] (eval-all exps env store
                                                                                            (fn [vs env store]
                                                                                              (k (apply f vs) env store)))))
 
          :else (let [[f & exps] exp]
-                 (scheme-eval f env store
+                 (tramp-scheme-eval f env store
                               (fn [f f-env store] (eval-all exps f-env store
                                                             (fn [vs args-env store] (apply-proc f vs store
                                                                                                 (fn [v final-env store]
                                                                                                   (k v f-env store))))))))))
+
+(defn scheme-eval [exp env store k]
+  (trampoline tramp-scheme-eval exp env store k))
 
 (defn repl [v env store]
   (println v)
