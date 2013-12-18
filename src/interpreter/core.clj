@@ -222,7 +222,11 @@
   (println v)
   (print "=>  ")
   (flush)
-  (scheme-eval (read-string (read-line)) env store (fn [v env store] (repl v env store))))
+
+  (let [exp (try (read-string (read-line))
+              (catch RuntimeException e ""))]
+    (scheme-eval exp env store
+                 (fn [v env store] (repl v env store)))))
 
 (defn -main [& args]
   (let [[env store] (fresh-env)]
