@@ -220,9 +220,19 @@
                                                                                                              (fn [v final-env store]
                                                                                                                (k v f-env store)))))))))))
 
+(defn my-trampoline
+  ([f]
+   (let [ret (f)]
+     (match [ret]
+            [(_ :guard primitive?)] ret
+            [(_ :guard #(and (fn? %) (comp not primitive? %)))] (recur ret)
+            :else ret)))
+  ([f & args]
+   (my-trampoline #(apply f args))))
+
 (defn scheme-eval
   [exp env store k]
-  (trampoline tramp-scheme-eval exp env store k))
+  (my-trampoline tramp-scheme-eval exp env store k))
 
 (defn repl
   [v env store]
