@@ -185,45 +185,47 @@
   [exp env store k]
   (log "eval" "#frames:" (count env) "   " "#bindings:" (count store))
   (match [exp]
-         [(_ :guard #(or (number? %) (string? %) (false? %) (true? %)))] (k exp env store)
-         [(_ :guard symbol?)] (k (lookup-variable-value exp env store) env store)
-         [(['quote & e] :seq)] (k (first e) env store)
-         [(['lambda & e] :seq)] (let [parameters (first e) body (rest e)]
-                                  (k (make-procedure parameters body env) env store))
+         [(_ :guard #(or (number? %) (string? %) (false? %) (true? %)))] (fn [] (k exp env store))
+         [(_ :guard symbol?)] (fn [] (k (lookup-variable-value exp env store) env store))
+         [(['quote & e] :seq)] (fn [] (k (first e) env store))
+         [(['lambda & e] :seq)] (fn [] (let [parameters (first e) body (rest e)]
+                                         (k (make-procedure parameters body env) env store)))
 
-         [(['if pred x else] :seq)] (tramp-scheme-eval pred env store (fn [pred env store]
-                                                                  (if pred
-                                                                    (tramp-scheme-eval x env store (fn [x env store] (k x env store)))
-                                                                    (tramp-scheme-eval else env store (fn [else env store] (k else env store))))))
+         [(['if pred x else] :seq)] (fn [] (tramp-scheme-eval pred env store (fn [pred env store]
+                                                                               (if pred
+                                                                                 (tramp-scheme-eval x env store (fn [x env store] (k x env store)))
+                                                                                 (tramp-scheme-eval else env store (fn [else env store] (k else env store)))))))
 
-         [(['define (sym :guard (complement seq?)) v] :seq)] (tramp-scheme-eval v env store (fn [v env store]
-                                                                                        (eval-definition sym v env store k)))
+         [(['define (sym :guard (complement seq?)) v] :seq)] (fn [] (tramp-scheme-eval v env store (fn [v env store]
+                                                                                                     (eval-definition sym v env store k)))) 
 
-         [(['set! sym v] :seq)] (tramp-scheme-eval v env store (fn [v env store]
-                                                              (eval-assignment sym v env store k)))
+         [(['set! sym v] :seq)] (fn [] (tramp-scheme-eval v env store (fn [v env store]
+                                                                        (eval-assignment sym v env store k))))
 
-         [(['define (_ :guard seq?) & r] :seq)] (tramp-scheme-eval (definefun->lambda exp) env store k)
-         [(['let ( _ :guard seq?) & r] :seq)] (tramp-scheme-eval (let->lambda exp) env store k)
+         [(['define (_ :guard seq?) & r] :seq)] (fn [] (tramp-scheme-eval (definefun->lambda exp) env store k))
+         [(['let ( _ :guard seq?) & r] :seq)] (fn [] (tramp-scheme-eval (let->lambda exp) env store k))
 
-         [(['begin & e] :seq)] (eval-sequence e env store k)
-         [(['cond & e] :seq)] (tramp-scheme-eval (cond->if e) env store k)
+         [(['begin & e] :seq)] (fn [] (eval-sequence e env store k))
+         [(['cond & e] :seq)] (fn [] (tramp-scheme-eval (cond->if e) env store k))
 
-         [([( f :guard primitive?) & exps] :seq)] (tramp-scheme-eval f env store
-                                                               (fn [f env store] (eval-all exps env store
-                                                                                           (fn [vs env store]
-                                                                                             (k (apply f vs) env store)))))
+         [([( f :guard primitive?) & exps] :seq)] (fn [] (tramp-scheme-eval f env store
+                                                                            (fn [f env store] (eval-all exps env store
+                                                                                                        (fn [vs env store]
+                                                                                                          (k (apply f vs) env store))))))
 
-         :else (let [[f & exps] exp]
-                 (tramp-scheme-eval f env store
-                              (fn [f f-env store] (eval-all exps f-env store
-                                                            (fn [vs args-env store] (apply-proc f vs store
-                                                                                                (fn [v final-env store]
-                                                                                                  (k v f-env store))))))))))
+         :else (fn [] (let [[f & exps] exp]
+                        (tramp-scheme-eval f env store
+                                           (fn [f f-env store] (eval-all exps f-env store
+                                                                         (fn [vs args-env store] (apply-proc f vs store
+                                                                                                             (fn [v final-env store]
+                                                                                                               (k v f-env store)))))))))))
 
-(defn scheme-eval [exp env store k]
+(defn scheme-eval
+  [exp env store k]
   (trampoline tramp-scheme-eval exp env store k))
 
-(defn repl [v env store]
+(defn repl
+  [v env store]
   (println v)
   (print "=>  ")
   (flush)
@@ -232,7 +234,8 @@
     (scheme-eval exp env store
                 (fn [v env store] (repl v env store)))))
 
-(defn -main [& args]
+(defn -main
+  [& args]
   (let [[env store] (fresh-env)]
     (if (seq? args)
       (doseq [filename args]
