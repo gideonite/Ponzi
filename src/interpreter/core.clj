@@ -54,6 +54,7 @@
 
 (declare scheme-eval)
 
+;; TODO: refactor to use `some` instead of (first (filter ...))
 (defn lookup-variable-value
   "Symbol env store -> value (or nil).
 
